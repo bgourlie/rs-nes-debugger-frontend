@@ -1,0 +1,22 @@
+{
+  "name": "rsnes-debugger",
+  "main": "index.js",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "webpack",
+    "watch": "webpack --watch",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "webpack-dev-server --port 3001"
+  },
+  "devDependencies": {
+    "css-loader": "^0.25.0",
+    "elm-css-webpack-loader": "^2.0.1",
+    "elm-webpack-loader": "^3.0.6",
+    "file-loader": "^0.9.0",
+    "style-loader": "^0.13.1",
+    "webpack": "^1.12.0",
+    "webpack-dev-server": "^1.14.0",
+    "6502-disasm": "^0.0.2"
+  }
+}
