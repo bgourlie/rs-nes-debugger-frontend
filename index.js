@@ -1,8 +1,14 @@
 'use strict';
 
-require('6502-disasm');
+const d = require('6502-disasm');
 require('./index.html');
 require('./src/Stylesheets');
-var Elm = require('./src/Main');
+const Elm = require('./src/Main');
 
-Elm.Main.embed(document.getElementById('main'));
+const app = Elm.Main.fullscreen();
+
+app.ports.decode.subscribe(function(bytes) {
+    const disasm = new d.Disassembler(bytes);
+    const res = disasm.decode();
+    app.ports.decoded.send(res);
+});

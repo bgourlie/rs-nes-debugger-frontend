@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (Html, Attribute, div, text, input, button, label, p)
 import Html.App as App
@@ -24,6 +24,11 @@ type alias Model =
     { message : String
     }
 
+-- port for sending decode requests out to JavaScript
+port decode : List Int -> Cmd msg
+
+-- port for listening for decoded instruction from JavaScript
+port decoded : (List String -> msg) -> Sub msg
 
 init : ( Model, Cmd AppMessage )
 init =
