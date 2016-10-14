@@ -1,10 +1,8 @@
 port module Main exposing (..)
 
-import Html exposing (Html, Attribute, div, text, input, button, label, p)
+import Html exposing (Html, Attribute, div, text, ul, li)
 import Html.App as App
-import Html.Attributes as Attrs exposing (style, type', value, min, max)
-import Color exposing (Color, toRgb)
-import Json.Decode as Json
+import List exposing (map)
 
 
 main =
@@ -22,17 +20,51 @@ main =
 
 type alias Model =
     { message : String
+    , decodedRom : List String
     }
 
+
+
 -- port for sending decode requests out to JavaScript
+
+
 port decode : List Int -> Cmd msg
 
+
+
 -- port for listening for decoded instruction from JavaScript
+
+
 port decoded : (List String -> msg) -> Sub msg
+
 
 init : ( Model, Cmd AppMessage )
 init =
-    ( { message = "Hello, world!" }, Cmd.none )
+    ( { message = "Hello, world!", decodedRom = [] }, decode testRom )
+
+
+testRom : List Int
+testRom =
+    [ 0x61
+    , 0x00
+    , 0x65
+    , 0x00
+    , 0x69
+    , 0x00
+    , 0x6D
+    , 0x0F
+    , 0xF0
+    , 0x71
+    , 0x00
+    , 0x75
+    , 0x00
+    , 0x79
+    , 0x00
+    , 0x00
+    , 0x7D
+    , 0x00
+    , 0x00
+    ]
 
 
 
@@ -40,19 +72,25 @@ init =
 
 
 type AppMessage
-    = NoOp
+    = Decoded (List String)
+    | NoOp
 
 
 update : AppMessage -> Model -> ( Model, Cmd AppMessage )
 update msg model =
     case msg of
+        Decoded bytes ->
+            ( { model | message = "DECODED!", decodedRom = bytes }, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub AppMessage
 subscriptions model =
-    Sub.none
+    Sub.batch
+        [ decoded (\asm -> Decoded asm)
+        ]
 
 
 
@@ -61,4 +99,12 @@ subscriptions model =
 
 view : Model -> Html AppMessage
 view model =
-    div [] [ text model.message ]
+    div []
+        [ div [] [ text model.message ]
+        , div [] [ instructionList model ]
+        ]
+
+
+instructionList : Model -> Html AppMessage
+instructionList model =
+    ul [] (map (\str -> li [] [ text str ]) model.decodedRom)
