@@ -3,6 +3,7 @@ port module Main exposing (..)
 import Html exposing (Html, Attribute, div, text, ul, li)
 import Html.App as App
 import List exposing (map)
+import WebSocket
 
 
 main =
@@ -72,13 +73,16 @@ testRom =
 
 
 type AppMessage
-    = Decoded (List String)
+    = DebuggerMessage String
+    | Decoded (List String)
     | NoOp
 
 
 update : AppMessage -> Model -> ( Model, Cmd AppMessage )
 update msg model =
     case msg of
+        DebuggerMessage str ->
+            ( model, Cmd.none )
         Decoded bytes ->
             ( { model | message = "DECODED!", decodedRom = bytes }, Cmd.none )
 
@@ -90,6 +94,7 @@ subscriptions : Model -> Sub AppMessage
 subscriptions model =
     Sub.batch
         [ decoded (\asm -> Decoded asm)
+        , WebSocket.listen "ws://localhost:9976" DebuggerMessage
         ]
 
 
