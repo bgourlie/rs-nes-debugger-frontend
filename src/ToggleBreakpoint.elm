@@ -1,9 +1,9 @@
-module ToggleBreakpoint exposing (responseDecoder, Response, endpoint)
+module ToggleBreakpoint exposing (request, Response)
 
-import Task exposing (Task)
-import Http
+import Task
 import Json.Decode
 import Json.Decode exposing (Decoder, (:=))
+import Http
 
 
 type alias Response =
@@ -12,8 +12,8 @@ type alias Response =
     }
 
 
-responseDecoder : Decoder Response
-responseDecoder =
+decoder : Decoder Response
+decoder =
     Json.Decode.object2 Response
         ("address" := Json.Decode.int)
         ("isSet" := Json.Decode.bool)
@@ -22,3 +22,8 @@ responseDecoder =
 endpoint : Int -> String
 endpoint address =
     "http://localhost:9975/toggle_breakpoint/" ++ toString address
+
+
+request : Int -> (Http.Error -> msg) -> (Response -> msg) -> Cmd msg
+request address failHandler successHandler =
+    Task.perform failHandler successHandler (Http.get decoder <| endpoint address)

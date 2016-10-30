@@ -7,13 +7,14 @@ import Http
 import Task exposing (Task)
 import List exposing (map, map2)
 import WebSocket
-import CpuSnapshot exposing (CpuSnapshot, cpuSnapshotDecoder)
+import CpuSnapshot
 import ParseInt exposing (toHex)
 import Styles
 import DebuggerCommand
 import DebuggerCommand exposing (DebuggerCommand(Break))
 import Json.Decode
 import ToggleBreakpoint
+import Continue
 
 
 { id, class, classList } =
@@ -22,10 +23,6 @@ import ToggleBreakpoint
 
 wsDebuggerEndpoint =
     "ws://localhost:9976"
-
-
-memoryEndpoint =
-    "http://localhost:9975/memory"
 
 
 main =
@@ -72,13 +69,16 @@ init =
 
 
 type AppMessage
-    = DebuggerCommandReceived DebuggerCommand
-    | MalformedDebuggerCommand String
+    = DebuggerCommandReceiveSuccess DebuggerCommand
+    | DebuggerCommandReceiveFail String
     | SetBreakpointClick Int
-    | SetBreakpointSuccess ToggleBreakpoint.Response
-    | SetBreakpointFail Http.Error
-    | FetchCpuSnapshotSuccess CpuSnapshot
-    | FetchCpuSnapshotFail Http.Error
+    | SetBreakpointRequestSuccess ToggleBreakpoint.Response
+    | SetBreakpointRequestFail Http.Error
+    | ContinueClick
+    | ContinueRequestSuccess Continue.Response
+    | ContinueRequestFail Http.Error
+    | CpuSnapshotRequestSuccess CpuSnapshot.Response
+    | CpuSnapshotRequestFail Http.Error
     | Decoded (List String)
     | NoOp
 
@@ -86,28 +86,37 @@ type AppMessage
 update : AppMessage -> Model -> ( Model, Cmd AppMessage )
 update msg model =
     case msg of
-        DebuggerCommandReceived cmd ->
-            ( model, getCpuSnapshot )
+        DebuggerCommandReceiveSuccess cmd ->
+            ( model, CpuSnapshot.request CpuSnapshotRequestFail CpuSnapshotRequestSuccess )
 
-        MalformedDebuggerCommand msg ->
-            ( { model | message = "Malformed debugger command" ++ msg }, Cmd.none )
+        DebuggerCommandReceiveFail msg ->
+            ( { model | message = "Unable to receive debugger command: " ++ msg }, Cmd.none )
 
         Decoded bytes ->
             ( { model | message = "DECODED!", decodedRom = bytes }, Cmd.none )
 
         SetBreakpointClick address ->
-            ( model, toggleBreakpoint address )
+            ( model, ToggleBreakpoint.request address SetBreakpointRequestFail SetBreakpointRequestSuccess )
 
-        SetBreakpointSuccess resp ->
+        SetBreakpointRequestSuccess resp ->
             ( { model | message = "Breakpoint set at " ++ toString resp.address }, Cmd.none )
 
-        SetBreakpointFail err ->
+        SetBreakpointRequestFail err ->
             ( { model | message = "Set breakpoint fail: " ++ toString err }, Cmd.none )
 
-        FetchCpuSnapshotSuccess cpuSnapshot ->
+        ContinueClick ->
+            ( model, Continue.request ContinueRequestFail ContinueRequestSuccess )
+
+        ContinueRequestSuccess resp ->
+            ( { model | message = "Continued!" }, Cmd.none )
+
+        ContinueRequestFail err ->
+            ( { model | message = "Continue request fail: " ++ toString err }, Cmd.none )
+
+        CpuSnapshotRequestSuccess cpuSnapshot ->
             ( { model | message = "Decoding...", programCounter = cpuSnapshot.registers.pc }, decode ( cpuSnapshot.memory, decodeStartRange cpuSnapshot.registers.pc, decodeEndRange cpuSnapshot.registers.pc + 20 ) )
 
-        FetchCpuSnapshotFail err ->
+        CpuSnapshotRequestFail err ->
             ( { model | message = "Fetch Fail: " ++ toString err }, Cmd.none )
 
         NoOp ->
@@ -118,35 +127,8 @@ subscriptions : Model -> Sub AppMessage
 subscriptions model =
     Sub.batch
         [ decoded (\asm -> Decoded asm)
-        , WebSocket.listen wsDebuggerEndpoint decodeDebuggerCommand
+        , WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         ]
-
-
-decodeDebuggerCommand : String -> AppMessage
-decodeDebuggerCommand json =
-    case DebuggerCommand.fromJson json of
-        Ok cmd ->
-            DebuggerCommandReceived cmd
-
-        Err msg ->
-            MalformedDebuggerCommand msg
-
-
-getCpuSnapshot : Cmd AppMessage
-getCpuSnapshot =
-    Task.perform FetchCpuSnapshotFail FetchCpuSnapshotSuccess (Http.get cpuSnapshotDecoder memoryEndpoint)
-
-
-toggleBreakpoint : Int -> Cmd AppMessage
-toggleBreakpoint address =
-    let
-        decoder =
-            ToggleBreakpoint.responseDecoder
-
-        endpoint =
-            ToggleBreakpoint.endpoint address
-    in
-        Task.perform SetBreakpointFail SetBreakpointSuccess (Http.get decoder endpoint)
 
 
 decodeStartRange : Int -> Int
@@ -169,7 +151,8 @@ decodeEndRange pc =
 view : Model -> Html AppMessage
 view model =
     div []
-        [ button [ onClick <| SetBreakpointClick 1232 ] [ text "Set breakpoint" ]
+        [ button [ onClick <| SetBreakpointClick 0x3607 ] [ text "Set breakpoint" ]
+        , button [ onClick ContinueClick ] [ text "Continue" ]
         , div [] [ text model.message ]
         , div [ id Styles.Instructions ] [ instructionList model ]
         ]

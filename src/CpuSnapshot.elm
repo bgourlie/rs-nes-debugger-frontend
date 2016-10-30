@@ -1,10 +1,16 @@
-module CpuSnapshot exposing (CpuSnapshot, Registers, cpuSnapshotDecoder)
+module CpuSnapshot exposing (request, Response, Registers)
 
+import Http
+import Task
 import Json.Decode exposing (Decoder, (:=))
 import Json.Decode as Json
 
 
-type alias CpuSnapshot =
+endpoint =
+    "http://localhost:9975/snapshot"
+
+
+type alias Response =
     { cycles : Int
     , registers : Registers
     , memory : List Int
@@ -21,9 +27,9 @@ type alias Registers =
     }
 
 
-cpuSnapshotDecoder : Decoder CpuSnapshot
-cpuSnapshotDecoder =
-    Json.object3 CpuSnapshot
+decoder : Decoder Response
+decoder =
+    Json.object3 Response
         ("cycles" := Json.int)
         ("registers" := registersDecoder)
         ("memory" := (Json.list Json.Decode.int))
@@ -38,3 +44,8 @@ registersDecoder =
         ("pc" := Json.int)
         ("sp" := Json.int)
         ("stat" := Json.int)
+
+
+request : (Http.Error -> msg) -> (Response -> msg) -> Cmd msg
+request failHandler successHandler =
+    Task.perform failHandler successHandler (Http.get decoder endpoint)

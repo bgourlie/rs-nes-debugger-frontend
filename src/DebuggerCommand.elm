@@ -1,4 +1,4 @@
-module DebuggerCommand exposing (DebuggerCommand, DebuggerCommand(Break), fromJson)
+module DebuggerCommand exposing (decode, DebuggerCommand, DebuggerCommand(Break))
 
 import Json.Decode exposing (Decoder, (:=))
 import Json.Decode as Json
@@ -37,3 +37,13 @@ commandFromTransportMessage transportMsg =
 
         _ ->
             Err <| "Unexpected debugger command: " ++ transportMsg.command
+
+
+decode : (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
+decode failHandler successHandler json =
+    case fromJson json of
+        Ok cmd ->
+            successHandler cmd
+
+        Err msg ->
+            failHandler msg
