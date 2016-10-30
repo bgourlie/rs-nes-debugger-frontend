@@ -7,14 +7,14 @@ import Http
 import Task exposing (Task)
 import List exposing (map, map2)
 import WebSocket
-import CpuSnapshot
 import ParseInt exposing (toHex)
 import Styles
-import DebuggerCommand
-import DebuggerCommand exposing (DebuggerCommand(Break))
 import Json.Decode
+import DebuggerCommand exposing (DebuggerCommand(Break))
+import CpuSnapshot
 import ToggleBreakpoint
 import Continue
+import Registers
 
 
 { id, class, classList } =
@@ -41,7 +41,7 @@ main =
 type alias Model =
     { message : String
     , decodedRom : List String
-    , programCounter : Int
+    , registers : Registers.Model
     }
 
 
@@ -61,7 +61,7 @@ port decoded : (List String -> msg) -> Sub msg
 
 init : ( Model, Cmd AppMessage )
 init =
-    ( { message = "Hello!", decodedRom = [], programCounter = 0 }, Cmd.none )
+    ( { message = "Hello!", decodedRom = [], registers = Registers.new }, Cmd.none )
 
 
 
@@ -72,12 +72,12 @@ type AppMessage
     = DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
     | SetBreakpointClick Int
-    | SetBreakpointRequestSuccess ToggleBreakpoint.Response
+    | SetBreakpointRequestSuccess ToggleBreakpoint.Model
     | SetBreakpointRequestFail Http.Error
     | ContinueClick
-    | ContinueRequestSuccess Continue.Response
+    | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
-    | CpuSnapshotRequestSuccess CpuSnapshot.Response
+    | CpuSnapshotRequestSuccess CpuSnapshot.Model
     | CpuSnapshotRequestFail Http.Error
     | Decoded (List String)
     | NoOp
@@ -114,7 +114,7 @@ update msg model =
             ( { model | message = "Continue request fail: " ++ toString err }, Cmd.none )
 
         CpuSnapshotRequestSuccess cpuSnapshot ->
-            ( { model | message = "Decoding...", programCounter = cpuSnapshot.registers.pc }, decode ( cpuSnapshot.memory, decodeStartRange cpuSnapshot.registers.pc, decodeEndRange cpuSnapshot.registers.pc + 20 ) )
+            ( { model | message = "Decoding...", registers = cpuSnapshot.registers }, decode ( cpuSnapshot.memory, decodeStartRange cpuSnapshot.registers.pc, decodeEndRange cpuSnapshot.registers.pc + 20 ) )
 
         CpuSnapshotRequestFail err ->
             ( { model | message = "Fetch Fail: " ++ toString err }, Cmd.none )
@@ -154,26 +154,31 @@ view model =
         [ button [ onClick <| SetBreakpointClick 0x3607 ] [ text "Set breakpoint" ]
         , button [ onClick ContinueClick ] [ text "Continue" ]
         , div [] [ text model.message ]
+        , div [] [ Registers.view model.registers ]
         , div [ id Styles.Instructions ] [ instructionList model ]
         ]
 
 
 instructionList : Model -> Html AppMessage
 instructionList model =
-    ul []
-        (map
-            (\( str, addr ) ->
-                li [ instructionClass addr model ]
-                    [ div [] [ text <| "0x" ++ toHex addr ]
-                    , div [] [ text str ]
-                    ]
+    let
+        pc =
+            model.registers.pc
+    in
+        ul []
+            (map
+                (\( str, addr ) ->
+                    li [ instructionClass addr model ]
+                        [ div [] [ text <| "0x" ++ toHex addr ]
+                        , div [] [ text str ]
+                        ]
+                )
+                (map2 (,) model.decodedRom [decodeStartRange pc..decodeEndRange pc])
             )
-            (map2 (,) model.decodedRom [decodeStartRange model.programCounter..decodeEndRange model.programCounter])
-        )
 
 
-instructionClass addr model =
-    if addr == model.programCounter then
+instructionClass address model =
+    if address == model.registers.pc then
         class [ Styles.CurrentInstruction ]
     else
         class []
