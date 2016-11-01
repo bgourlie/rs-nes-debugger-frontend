@@ -15,6 +15,7 @@ import CpuSnapshot
 import ToggleBreakpoint
 import Continue
 import Registers
+import Step
 
 
 { id, class, classList } =
@@ -74,6 +75,9 @@ type AppMessage
     | SetBreakpointClick Int
     | SetBreakpointRequestSuccess ToggleBreakpoint.Model
     | SetBreakpointRequestFail Http.Error
+    | StepClick
+    | StepRequestSuccess Step.Model
+    | StepRequestFail Http.Error
     | ContinueClick
     | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
@@ -103,6 +107,15 @@ update msg model =
 
         SetBreakpointRequestFail err ->
             ( { model | message = "Set breakpoint fail: " ++ toString err }, Cmd.none )
+
+        StepClick ->
+            ( model, Step.request StepRequestFail StepRequestSuccess )
+
+        StepRequestSuccess resp ->
+            ( { model | message = "Stepped!" }, Cmd.none )
+
+        StepRequestFail err ->
+            ( { model | message = "Step request fail: " ++ toString err }, Cmd.none )
 
         ContinueClick ->
             ( model, Continue.request ContinueRequestFail ContinueRequestSuccess )
@@ -151,7 +164,8 @@ decodeEndRange pc =
 view : Model -> Html AppMessage
 view model =
     div []
-        [ button [ onClick <| SetBreakpointClick 0x3607 ] [ text "Set breakpoint" ]
+        [ button [ onClick <| SetBreakpointClick 0x0418 ] [ text "Set breakpoint" ]
+        , button [ onClick StepClick ] [ text "Step" ]
         , button [ onClick ContinueClick ] [ text "Continue" ]
         , div [] [ text model.message ]
         , div [] [ Registers.view model.registers ]
