@@ -5,13 +5,14 @@ import Html.Events exposing (onClick)
 import Html.App as App
 import Http
 import Task exposing (Task)
-import List exposing (map, map2)
 import WebSocket
 import ParseInt exposing (toHex)
+import CssCommon
 import Styles
 import Json.Decode
 import DebuggerCommand exposing (DebuggerCommand(Break))
 import CpuSnapshot
+import Instructions
 import ToggleBreakpoint
 import Continue
 import Registers
@@ -19,7 +20,7 @@ import Step
 
 
 { id, class, classList } =
-    Styles.helpers
+    CssCommon.helpers
 
 
 wsDebuggerEndpoint =
@@ -127,7 +128,7 @@ update msg model =
             ( { model | message = "Continue request fail: " ++ toString err }, Cmd.none )
 
         CpuSnapshotRequestSuccess cpuSnapshot ->
-            ( { model | message = "Decoding...", registers = cpuSnapshot.registers }, decode ( cpuSnapshot.memory, decodeStartRange cpuSnapshot.registers.pc, decodeEndRange cpuSnapshot.registers.pc + 20 ) )
+            ( { model | message = "Decoding...", registers = cpuSnapshot.registers }, decode ( cpuSnapshot.memory, Instructions.decodeStartRange cpuSnapshot.registers.pc, Instructions.decodeEndRange cpuSnapshot.registers.pc + 20 ) )
 
         CpuSnapshotRequestFail err ->
             ( { model | message = "Fetch Fail: " ++ toString err }, Cmd.none )
@@ -144,19 +145,6 @@ subscriptions model =
         ]
 
 
-decodeStartRange : Int -> Int
-decodeStartRange pc =
-    if pc < 20 then
-        0
-    else
-        pc - 20
-
-
-decodeEndRange : Int -> Int
-decodeEndRange pc =
-    pc + 20
-
-
 
 -- VIEW
 
@@ -164,35 +152,9 @@ decodeEndRange pc =
 view : Model -> Html AppMessage
 view model =
     div []
-        [ button [ onClick <| SetBreakpointClick 0x0418 ] [ text "Set breakpoint" ]
-        , button [ onClick StepClick ] [ text "Step" ]
+        [ button [ onClick StepClick ] [ text "Step" ]
         , button [ onClick ContinueClick ] [ text "Continue" ]
         , div [] [ text model.message ]
         , div [] [ Registers.view model.registers ]
-        , div [ id Styles.Instructions ] [ instructionList model ]
+        , Instructions.view model.registers.pc model.decodedRom
         ]
-
-
-instructionList : Model -> Html AppMessage
-instructionList model =
-    let
-        pc =
-            model.registers.pc
-    in
-        ul []
-            (map
-                (\( str, addr ) ->
-                    li [ instructionClass addr model ]
-                        [ div [] [ text <| "0x" ++ toHex addr ]
-                        , div [] [ text str ]
-                        ]
-                )
-                (map2 (,) model.decodedRom [decodeStartRange pc..decodeEndRange pc])
-            )
-
-
-instructionClass address model =
-    if address == model.registers.pc then
-        class [ Styles.CurrentInstruction ]
-    else
-        class []

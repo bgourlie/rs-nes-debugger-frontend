@@ -1,50 +1,22 @@
-module Styles exposing (css, helpers, CssIds(Instructions, CurrentInstruction))
+module Styles exposing (css)
 
 import Html.Attributes
 import Color
 import Css exposing (..)
 import Css.Elements exposing (body, ul, li, div)
 import Css.Namespace exposing (namespace)
-import Html.CssHelpers
-
-
-type CssIds
-    = Instructions
-    | CurrentInstruction
-
-
-myNamespace =
-    "rsnes-debugger"
+import Registers
+import Instructions
+import CssCommon
 
 
 css =
-    (stylesheet << namespace myNamespace)
+    (stylesheet << namespace CssCommon.namespace)
         [ body
             [ overflowX auto
             , minWidth (px 1280)
             ]
-        , (#) Instructions
-            [ fontFamilies [ "monospace" ]
-            , children
-                [ ul
-                    [ listStyleType none
-                    , padding (px 0)
-                    , children
-                        [ (.) CurrentInstruction [ backgroundColor (hex "#ccffaa") ]
-                        , li
-                            [ children
-                                [ div
-                                    [ display inlineBlock
-                                    , paddingRight (px 10)
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+        , CssCommon.styles
+        , Registers.styles
+        , Instructions.styles
         ]
-
-
-helpers =
-    Html.CssHelpers.withNamespace myNamespace

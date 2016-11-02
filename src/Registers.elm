@@ -1,8 +1,14 @@
-module Registers exposing (new, decoder, Model, view)
+module Registers exposing (new, decoder, Model, view, styles)
 
-import Bitwise exposing (and)
 import Html exposing (div, ul, li, text, Html)
+import Bitwise exposing (and)
 import Json.Decode as Json exposing (Decoder, (:=))
+import Css exposing ((#))
+import CssCommon
+
+
+{ id, class, classList } =
+    CssCommon.helpers
 
 
 getCarry : Model -> Bool
@@ -69,7 +75,7 @@ decoder =
 
 view : Model -> Html msg
 view model =
-    ul []
+    ul [ id Registers, class [ CssCommon.List ] ]
         [ li [] [ text <| "Program Counter: " ++ toString model.pc ]
         , li [] [ text <| "Stack Pointer: " ++ toString model.sp ]
         , li [] [ text <| "Accumulator: " ++ toString model.acc ]
@@ -81,9 +87,9 @@ view model =
 
 statusFlagsView : Model -> Html msg
 statusFlagsView model =
-    div []
+    div [ id StatusFlags ]
         [ div [] [ text "Status Flags" ]
-        , ul []
+        , ul [ class [ CssCommon.List ] ]
             [ li [] [ text <| "carry: " ++ toString (getCarry model) ]
             , li [] [ text <| "zero: " ++ toString (getZero model) ]
             , li [] [ text <| "interrupt: " ++ toString (getInterrupt model) ]
@@ -91,4 +97,21 @@ statusFlagsView model =
             , li [] [ text <| "overflow: " ++ toString (getOverflow model) ]
             , li [] [ text <| "negative: " ++ toString (getNegative model) ]
             ]
+        ]
+
+
+type CssIds
+    = Registers
+    | StatusFlags
+
+
+styles =
+    (#) Registers
+        [ Css.fontFamilies [ "monospace" ]
+        ]
+
+
+statusFlagStyles =
+    (#) StatusFlags
+        [ Css.fontFamilies [ "monospace" ]
         ]
