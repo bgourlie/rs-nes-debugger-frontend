@@ -16,7 +16,9 @@ css =
             [ overflowX auto
             , minWidth (px 1280)
             ]
-        , CssCommon.styles
+        , CssCommon.listStyle
+        , CssCommon.inlineListStyle
         , Registers.styles
+        , Registers.statusFlagStyles
         , Instructions.styles
         ]

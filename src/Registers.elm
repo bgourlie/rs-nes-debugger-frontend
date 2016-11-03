@@ -1,9 +1,11 @@
-module Registers exposing (new, decoder, Model, view, styles)
+module Registers exposing (new, decoder, Model, view, styles, statusFlagStyles)
 
-import Html exposing (div, ul, li, text, Html)
+import Html exposing (div, ul, li, h4, text, Html)
+import Html.Attributes exposing (title)
 import Bitwise exposing (and)
 import Json.Decode as Json exposing (Decoder, (:=))
 import Css exposing ((#))
+import Css.Elements
 import CssCommon
 
 
@@ -75,27 +77,25 @@ decoder =
 
 view : Model -> Html msg
 view model =
-    ul [ id Registers, class [ CssCommon.List ] ]
-        [ li [] [ text <| "Program Counter: " ++ toString model.pc ]
-        , li [] [ text <| "Stack Pointer: " ++ toString model.sp ]
-        , li [] [ text <| "Accumulator: " ++ toString model.acc ]
-        , li [] [ text <| "Index Register (X): " ++ toString model.x ]
-        , li [] [ text <| "Index Register (Y): " ++ toString model.y ]
-        , li [] [ statusFlagsView model ]
-        ]
-
-
-statusFlagsView : Model -> Html msg
-statusFlagsView model =
-    div [ id StatusFlags ]
-        [ div [] [ text "Status Flags" ]
-        , ul [ class [ CssCommon.List ] ]
-            [ li [] [ text <| "carry: " ++ toString (getCarry model) ]
-            , li [] [ text <| "zero: " ++ toString (getZero model) ]
-            , li [] [ text <| "interrupt: " ++ toString (getInterrupt model) ]
-            , li [] [ text <| "decimal: " ++ toString (getDecimal model) ]
-            , li [] [ text <| "overflow: " ++ toString (getOverflow model) ]
-            , li [] [ text <| "negative: " ++ toString (getNegative model) ]
+    div [ id Registers ]
+        [ h4 [] [ text "Registers" ]
+        , ul [ class [ CssCommon.InlineList ] ]
+            [ li [ title "Program Counter" ] [ text <| "PC: " ++ toString model.pc ]
+            , li [ title "Stack Pointer" ] [ text <| "SP: " ++ toString model.sp ]
+            , li [ title "Accumulator" ] [ text <| "ACC: " ++ toString model.acc ]
+            , li [ title "Index (X)" ] [ text <| "X: " ++ toString model.x ]
+            , li [ title "Index (Y)" ] [ text <| "Y: " ++ toString model.y ]
+            ]
+        , div [ id StatusFlags ]
+            [ h4 [] [ text "Status Flags" ]
+            , ul [ class [ CssCommon.InlineList ] ]
+                [ li [] [ text <| "carry: " ++ flagDisplay (getCarry model) ]
+                , li [] [ text <| "zero: " ++ flagDisplay (getZero model) ]
+                , li [] [ text <| "interrupt: " ++ flagDisplay (getInterrupt model) ]
+                , li [] [ text <| "decimal: " ++ flagDisplay (getDecimal model) ]
+                , li [] [ text <| "overflow: " ++ flagDisplay (getOverflow model) ]
+                , li [] [ text <| "negative: " ++ flagDisplay (getNegative model) ]
+                ]
             ]
         ]
 
@@ -105,9 +105,22 @@ type CssIds
     | StatusFlags
 
 
+flagDisplay : Bool -> String
+flagDisplay val =
+    if val then
+        toString 1
+    else
+        toString 0
+
+
 styles =
     (#) Registers
         [ Css.fontFamilies [ "monospace" ]
+        , Css.descendants
+            [ Css.Elements.h4
+                [ Css.marginBottom (Css.px 3)
+                ]
+            ]
         ]
 
 

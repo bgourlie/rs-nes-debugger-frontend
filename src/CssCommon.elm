@@ -1,6 +1,7 @@
-module CssCommon exposing (namespace, helpers, styles, CommonStyles(List))
+module CssCommon exposing (namespace, helpers, listStyle, inlineListStyle, CommonStyles(List, InlineList))
 
 import Css exposing (..)
+import Css.Elements
 import Html.CssHelpers
 
 
@@ -14,10 +15,28 @@ helpers =
 
 type CommonStyles
     = List
+    | InlineList
 
 
-styles =
+listStyle =
     (.) List
         [ listStyleType none
         , padding (px 0)
+        ]
+
+
+inlineListStyle =
+    (.) InlineList
+        [ listStyleType none
+        , padding (px 0)
+        , margin (px 0)
+        , children
+            [ Css.Elements.li
+                [ display inlineBlock
+                , paddingLeft (em 1)
+                , firstChild
+                    [ paddingLeft (px 0)
+                    ]
+                ]
+            ]
         ]
