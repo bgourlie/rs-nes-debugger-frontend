@@ -20,7 +20,7 @@ view pc decodedRom =
 
 instructionView : Int -> List String -> Html msg
 instructionView pc decodedRom =
-    Html.ul []
+    Html.ul [ class [ CssCommon.List ] ]
         (map
             (\( str, addr ) ->
                 Html.li [ instructionClass addr pc ]
@@ -38,7 +38,7 @@ type CssIds
 
 
 styles =
-    (#) Instructions
+    [ (#) Instructions
         [ Css.fontFamilies [ "monospace" ]
         , Css.children
             [ CssElem.ul
@@ -56,6 +56,7 @@ styles =
                 ]
             ]
         ]
+    ]
 
 
 instructionClass address pc =

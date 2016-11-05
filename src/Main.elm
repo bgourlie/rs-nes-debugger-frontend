@@ -4,12 +4,10 @@ import Html exposing (Html, Attribute, div, text, ul, li, button)
 import Html.Events exposing (onClick)
 import Html.App as App
 import Http
-import Task exposing (Task)
 import WebSocket
-import ParseInt exposing (toHex)
+import Css exposing ((#))
+import Css.Elements
 import CssCommon
-import Styles
-import Json.Decode
 import DebuggerCommand exposing (DebuggerCommand(Break))
 import CpuSnapshot
 import Instructions
@@ -23,10 +21,12 @@ import Step
     CssCommon.helpers
 
 
+wsDebuggerEndpoint : String
 wsDebuggerEndpoint =
     "ws://localhost:9976"
 
 
+main : Program Never
 main =
     App.program
         { init = init
@@ -41,7 +41,7 @@ main =
 
 
 type alias Model =
-    { message : String
+    { messages : List String
     , decodedRom : List String
     , registers : Registers.Model
     }
@@ -63,7 +63,7 @@ port decoded : (List String -> msg) -> Sub msg
 
 init : ( Model, Cmd AppMessage )
 init =
-    ( { message = "Hello!", decodedRom = [], registers = Registers.new }, Cmd.none )
+    ( { messages = [ "Welcome to the rs-nes debugger!" ], decodedRom = [], registers = Registers.new }, Cmd.none )
 
 
 
@@ -95,43 +95,43 @@ update msg model =
             ( model, CpuSnapshot.request CpuSnapshotRequestFail CpuSnapshotRequestSuccess )
 
         DebuggerCommandReceiveFail msg ->
-            ( { model | message = "Unable to receive debugger command: " ++ msg }, Cmd.none )
+            ( { model | messages = (("Unable to receive debugger command: " ++ msg) :: model.messages) }, Cmd.none )
 
         Decoded bytes ->
-            ( { model | message = "DECODED!", decodedRom = bytes }, Cmd.none )
+            ( { model | messages = ("DECODED!" :: model.messages), decodedRom = bytes }, Cmd.none )
 
         SetBreakpointClick address ->
             ( model, ToggleBreakpoint.request address SetBreakpointRequestFail SetBreakpointRequestSuccess )
 
         SetBreakpointRequestSuccess resp ->
-            ( { model | message = "Breakpoint set at " ++ toString resp.address }, Cmd.none )
+            ( { model | messages = (("Breakpoint set at " ++ toString resp.address) :: model.messages) }, Cmd.none )
 
         SetBreakpointRequestFail err ->
-            ( { model | message = "Set breakpoint fail: " ++ toString err }, Cmd.none )
+            ( { model | messages = (("Set breakpoint fail: " ++ toString err) :: model.messages) }, Cmd.none )
 
         StepClick ->
             ( model, Step.request StepRequestFail StepRequestSuccess )
 
         StepRequestSuccess resp ->
-            ( { model | message = "Stepped!" }, Cmd.none )
+            ( { model | messages = ("Stepped!" :: model.messages) }, Cmd.none )
 
         StepRequestFail err ->
-            ( { model | message = "Step request fail: " ++ toString err }, Cmd.none )
+            ( { model | messages = (("Step request fail: " ++ toString err) :: model.messages) }, Cmd.none )
 
         ContinueClick ->
             ( model, Continue.request ContinueRequestFail ContinueRequestSuccess )
 
         ContinueRequestSuccess resp ->
-            ( { model | message = "Continued!" }, Cmd.none )
+            ( { model | messages = ("Continued!" :: model.messages) }, Cmd.none )
 
         ContinueRequestFail err ->
-            ( { model | message = "Continue request fail: " ++ toString err }, Cmd.none )
+            ( { model | messages = (("Continue request fail: " ++ toString err) :: model.messages) }, Cmd.none )
 
         CpuSnapshotRequestSuccess cpuSnapshot ->
-            ( { model | message = "Decoding...", registers = cpuSnapshot.registers }, decode ( cpuSnapshot.memory, Instructions.decodeStartRange cpuSnapshot.registers.pc, Instructions.decodeEndRange cpuSnapshot.registers.pc + 20 ) )
+            ( { model | messages = ("Decoding..." :: model.messages), registers = cpuSnapshot.registers }, decode ( cpuSnapshot.memory, Instructions.decodeStartRange cpuSnapshot.registers.pc, Instructions.decodeEndRange cpuSnapshot.registers.pc + 20 ) )
 
         CpuSnapshotRequestFail err ->
-            ( { model | message = "Fetch Fail: " ++ toString err }, Cmd.none )
+            ( { model | messages = (("Fetch Fail: " ++ toString err) :: model.messages) }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -154,7 +154,39 @@ view model =
     div []
         [ button [ onClick StepClick ] [ text "Step" ]
         , button [ onClick ContinueClick ] [ text "Continue" ]
-        , div [] [ text model.message ]
-        , div [] [ Registers.view model.registers ]
-        , Instructions.view model.registers.pc model.decodedRom
+        , div [ id TwoColumn ]
+            [ div [ id LeftColumn ]
+                [ div []
+                    [ div [] [ Registers.view model.registers ]
+                    , Instructions.view model.registers.pc model.decodedRom
+                    ]
+                ]
+            , ul [ id Messages, class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages))
+            ]
         ]
+
+
+type CssIds
+    = TwoColumn
+    | LeftColumn
+    | Messages
+
+
+styles : List Css.Snippet
+styles =
+    [ (#) TwoColumn
+        [ Css.displayFlex
+        , Css.flexDirection Css.row
+        , Css.children
+            [ Css.Elements.div
+                [ Css.padding (Css.px 5)
+                ]
+            ]
+        ]
+    , (#) LeftColumn
+        [ Css.borderRight3 (Css.px 1) Css.solid (Css.hex "#CCCCCC")
+        ]
+    , (#) Messages
+        [ Css.fontFamily Css.monospace
+        ]
+    ]

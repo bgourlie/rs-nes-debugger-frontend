@@ -1,4 +1,4 @@
-module CssCommon exposing (namespace, helpers, listStyle, inlineListStyle, CommonStyles(List, InlineList))
+module CssCommon exposing (namespace, helpers, styles, CommonStyles(List, InlineList))
 
 import Css exposing (..)
 import Css.Elements
@@ -18,15 +18,12 @@ type CommonStyles
     | InlineList
 
 
-listStyle =
-    (.) List
+styles =
+    [ (.) List
         [ listStyleType none
         , padding (px 0)
         ]
-
-
-inlineListStyle =
-    (.) InlineList
+    , (.) InlineList
         [ listStyleType none
         , padding (px 0)
         , margin (px 0)
@@ -40,3 +37,4 @@ inlineListStyle =
                 ]
             ]
         ]
+    ]

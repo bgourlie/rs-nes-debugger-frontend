@@ -1,4 +1,4 @@
-module Registers exposing (new, decoder, Model, view, styles, statusFlagStyles)
+module Registers exposing (new, decoder, Model, view, styles)
 
 import Html exposing (div, ul, li, h4, text, Html)
 import Html.Attributes exposing (title)
@@ -114,7 +114,7 @@ flagDisplay val =
 
 
 styles =
-    (#) Registers
+    [ (#) Registers
         [ Css.fontFamilies [ "monospace" ]
         , Css.descendants
             [ Css.Elements.h4
@@ -122,9 +122,7 @@ styles =
                 ]
             ]
         ]
-
-
-statusFlagStyles =
-    (#) StatusFlags
+    , (#) StatusFlags
         [ Css.fontFamilies [ "monospace" ]
         ]
+    ]
