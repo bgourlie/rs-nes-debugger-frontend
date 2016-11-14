@@ -8,6 +8,7 @@ import Css exposing ((#), (.))
 import Css.Elements as CssElem
 import CssCommon
 import Registers
+import Colors
 
 
 { id, class, classList } =
@@ -44,8 +45,12 @@ instructionView pc instructions =
         (map
             (\instruction ->
                 Html.li [ instructionClass instruction.offset pc ]
-                    [ Html.div [] [ Html.text <| "0x" ++ toHex instruction.offset ]
-                    , Html.div [] [ Html.text <| instruction.mnemonic ++ " " ++ instruction.operand ]
+                    [ Html.div [ class [ LineNumber ] ] [ Html.text <| "0x" ++ toHex instruction.offset ]
+                    , Html.div []
+                        [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
+                        , Html.span [] [ Html.text " " ]
+                        , Html.span [ class [ Operand ] ] [ Html.text instruction.operand ]
+                        ]
                     ]
             )
             instructions
@@ -57,13 +62,19 @@ type CssIds
     | CurrentInstruction
 
 
+type CssClasses
+    = LineNumber
+    | Mnemonic
+    | Operand
+
+
 styles =
     [ (#) Instructions
         [ Css.fontFamilies [ "monospace" ]
         , Css.children
             [ CssElem.ul
                 [ Css.children
-                    [ (.) CurrentInstruction [ Css.backgroundColor (Css.hex "#ccffaa") ]
+                    [ (.) CurrentInstruction [ Css.backgroundColor Colors.currentLine ]
                     , CssElem.li
                         [ Css.children
                             [ CssElem.div
@@ -75,6 +86,12 @@ styles =
                     ]
                 ]
             ]
+        ]
+    , (.) LineNumber
+        [ Css.color Colors.lineNumber
+        ]
+    , (.) Mnemonic
+        [ Css.color Colors.mnemonic
         ]
     ]
 

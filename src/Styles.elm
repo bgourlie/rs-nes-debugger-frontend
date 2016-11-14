@@ -7,6 +7,7 @@ import Main
 import Registers
 import Instruction
 import CssCommon
+import Colors
 
 
 css : Stylesheet
@@ -14,7 +15,9 @@ css =
     (stylesheet << namespace CssCommon.namespace) <|
         List.concat
             [ [ body
-                    [ overflowX auto
+                    [ backgroundColor Colors.background
+                    , color Colors.foreground
+                    , overflowX auto
                     , minWidth (px 1280)
                     ]
               ]

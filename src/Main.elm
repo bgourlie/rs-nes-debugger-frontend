@@ -16,6 +16,7 @@ import ToggleBreakpoint
 import Continue
 import Registers
 import Step
+import Colors
 
 
 { id, class, classList } =
@@ -144,21 +145,21 @@ view model =
         [ button [ onClick StepClick ] [ text "Step" ]
         , button [ onClick ContinueClick ] [ text "Continue" ]
         , div [ id TwoColumn ]
-            [ div [ id LeftColumn ]
+            [ div []
                 [ div []
                     [ div [] [ Registers.view model.registers ]
                     , Instruction.view model.registers.pc model.instructions
                     ]
                 ]
-            , ul [ id Messages, class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages))
+            , div [ id Console ]
+                [ ul [ class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages)) ]
             ]
         ]
 
 
 type CssIds
     = TwoColumn
-    | LeftColumn
-    | Messages
+    | Console
 
 
 styles : List Css.Snippet
@@ -172,10 +173,8 @@ styles =
                 ]
             ]
         ]
-    , (#) LeftColumn
-        [ Css.borderRight3 (Css.px 1) Css.solid (Css.hex "#CCCCCC")
-        ]
-    , (#) Messages
+    , (#) Console
         [ Css.fontFamily Css.monospace
+        , Css.backgroundColor Colors.consoleBackground
         ]
     ]
