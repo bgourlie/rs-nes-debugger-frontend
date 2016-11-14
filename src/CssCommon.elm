@@ -22,6 +22,7 @@ styles =
     [ (.) List
         [ listStyleType none
         , padding (px 0)
+        , margin (px 0)
         ]
     , (.) InlineList
         [ listStyleType none

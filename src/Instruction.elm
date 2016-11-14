@@ -36,17 +36,12 @@ decoder =
 
 view : Int -> List Model -> Html msg
 view pc instructions =
-    Html.div [ id Instructions ] [ instructionView pc instructions ]
-
-
-instructionView : Int -> List Model -> Html msg
-instructionView pc instructions =
-    Html.ul [ class [ CssCommon.List ] ]
+    Html.table [ id Instructions ]
         (map
             (\instruction ->
-                Html.li [ instructionClass instruction.offset pc ]
-                    [ Html.div [ class [ LineNumber ] ] [ Html.text <| "0x" ++ toHex instruction.offset ]
-                    , Html.div []
+                Html.tr [ instructionClass instruction.offset pc ]
+                    [ Html.td [ class [ Gutter ] ] [ Html.text <| "0x" ++ toHex instruction.offset ]
+                    , Html.td []
                         [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
                         , Html.span [] [ Html.text " " ]
                         , Html.span [ class [ Operand ] ] [ Html.text instruction.operand ]
@@ -63,7 +58,7 @@ type CssIds
 
 
 type CssClasses
-    = LineNumber
+    = Gutter
     | Mnemonic
     | Operand
 
@@ -71,27 +66,26 @@ type CssClasses
 styles =
     [ (#) Instructions
         [ Css.fontFamilies [ "monospace" ]
+        , Css.height (Css.pct 100)
+        , Css.width (Css.px 400)
+        , Css.property "border-spacing" "0"
         , Css.children
-            [ CssElem.ul
-                [ Css.children
-                    [ (.) CurrentInstruction [ Css.backgroundColor Colors.currentLine ]
-                    , CssElem.li
-                        [ Css.children
-                            [ CssElem.div
-                                [ Css.display Css.inlineBlock
-                                , Css.paddingRight (Css.px 10)
-                                ]
-                            ]
-                        ]
-                    ]
+            [ (.) CurrentInstruction
+                [ Css.backgroundColor Colors.currentLine
                 ]
             ]
         ]
-    , (.) LineNumber
+    , (.) Gutter
         [ Css.color Colors.lineNumber
+        , Css.width (Css.pct 1)
+        , Css.backgroundColor Colors.gutterBackground
+        , Css.borderRight3 (Css.px 1) Css.solid Colors.gutterBorder
+        , Css.paddingRight (Css.em 1)
+        , Css.property "user-select" "none"
         ]
     , (.) Mnemonic
         [ Css.color Colors.mnemonic
+        , Css.paddingLeft (Css.em 1)
         ]
     ]
 

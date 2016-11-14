@@ -15,10 +15,11 @@ css =
     (stylesheet << namespace CssCommon.namespace) <|
         List.concat
             [ [ body
-                    [ backgroundColor Colors.background
+                    [ padding (px 0)
+                    , margin (px 0)
+                    , backgroundColor Colors.background
                     , color Colors.foreground
-                    , overflowX auto
-                    , minWidth (px 1280)
+                    , height (Css.vh 100)
                     ]
               ]
             , CssCommon.styles

@@ -1,6 +1,6 @@
 port module Main exposing (..)
 
-import Html exposing (Html, Attribute, div, text, ul, li, button)
+import Html exposing (Html, Attribute, div, text, ul, li, button, header)
 import Html.Events exposing (onClick)
 import Html.App as App
 import Http
@@ -99,7 +99,7 @@ update msg model =
             ( model, Step.request StepRequestFail StepRequestSuccess )
 
         StepRequestSuccess resp ->
-            ( { model | messages = ("Stepped!" :: model.messages) }, Cmd.none )
+            ( model, Cmd.none )
 
         StepRequestFail err ->
             ( { model | messages = (("Step request fail: " ++ toString err) :: model.messages) }, Cmd.none )
@@ -125,7 +125,7 @@ handleDebuggerCommand model cmd =
                 pc =
                     snapshot.registers.pc
             in
-                ( { model | messages = (("Breaking @ " ++ toHex pc) :: model.messages), instructions = snapshot.instructions, registers = snapshot.registers }, Cmd.none )
+                ( { model | messages = (("Breaking @ 0x" ++ toHex pc) :: model.messages), instructions = snapshot.instructions, registers = snapshot.registers }, Cmd.none )
 
 
 subscriptions : Model -> Sub AppMessage
@@ -141,40 +141,38 @@ subscriptions model =
 
 view : Model -> Html AppMessage
 view model =
-    div []
-        [ button [ onClick StepClick ] [ text "Step" ]
-        , button [ onClick ContinueClick ] [ text "Continue" ]
+    div [ id Container ]
+        [ header []
+            [ button [ onClick StepClick ] [ text "Step" ]
+            , button [ onClick ContinueClick ] [ text "Continue" ]
+            , div [] [ Registers.view model.registers ]
+            ]
         , div [ id TwoColumn ]
-            [ div []
-                [ div []
-                    [ div [] [ Registers.view model.registers ]
-                    , Instruction.view model.registers.pc model.instructions
-                    ]
-                ]
-            , div [ id Console ]
-                [ ul [ class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages)) ]
+            [ Instruction.view model.registers.pc model.instructions
+            , ul [ id Console, class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages))
             ]
         ]
 
 
 type CssIds
-    = TwoColumn
+    = Container
+    | TwoColumn
     | Console
 
 
 styles : List Css.Snippet
 styles =
-    [ (#) TwoColumn
+    [ (#) Container
+        [ Css.padding (Css.px 5)
+        ]
+    , (#) TwoColumn
         [ Css.displayFlex
         , Css.flexDirection Css.row
-        , Css.children
-            [ Css.Elements.div
-                [ Css.padding (Css.px 5)
-                ]
-            ]
+        , Css.height (Css.pct 100)
         ]
     , (#) Console
         [ Css.fontFamily Css.monospace
+        , Css.padding (Css.px 5)
         , Css.backgroundColor Colors.consoleBackground
         ]
     ]

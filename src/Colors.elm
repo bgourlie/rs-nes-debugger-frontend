@@ -23,5 +23,13 @@ mnemonic =
     hex "#a5c25c"
 
 
+gutterBackground =
+    hex "#313335"
+
+
+gutterBorder =
+    hex "#606366"
+
+
 lineNumber =
     hex "#606366"
