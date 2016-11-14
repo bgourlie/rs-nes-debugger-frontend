@@ -13,6 +13,10 @@ import CssCommon
     CssCommon.helpers
 
 
+
+--
+
+
 getCarry : Model -> Bool
 getCarry model =
     model.stat `and` 0x01 > 0
@@ -72,7 +76,7 @@ decoder =
         ("y" := Json.int)
         ("pc" := Json.int)
         ("sp" := Json.int)
-        ("stat" := Json.int)
+        ("status" := Json.int)
 
 
 view : Model -> Html msg

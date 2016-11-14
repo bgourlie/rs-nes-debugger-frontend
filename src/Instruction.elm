@@ -1,6 +1,7 @@
-module Instructions exposing (view, styles, decodeStartRange, decodeEndRange)
+module Instruction exposing (view, styles, decoder, Model)
 
 import Html exposing (Html, Attribute)
+import Json.Decode as Json exposing (Decoder, (:=))
 import List exposing (map, map2)
 import ParseInt exposing (toHex)
 import Css exposing ((#), (.))
@@ -13,22 +14,41 @@ import Registers
     CssCommon.helpers
 
 
-view : Int -> List String -> Html msg
-view pc decodedRom =
-    Html.div [ id Instructions ] [ instructionView pc decodedRom ]
+
+--
 
 
-instructionView : Int -> List String -> Html msg
-instructionView pc decodedRom =
+type alias Model =
+    { mnemonic : String
+    , operand : String
+    , offset : Int
+    }
+
+
+decoder : Decoder Model
+decoder =
+    Json.object3 Model
+        ("mnemonic" := Json.string)
+        ("operand" := Json.string)
+        ("offset" := Json.int)
+
+
+view : Int -> List Model -> Html msg
+view pc instructions =
+    Html.div [ id Instructions ] [ instructionView pc instructions ]
+
+
+instructionView : Int -> List Model -> Html msg
+instructionView pc instructions =
     Html.ul [ class [ CssCommon.List ] ]
         (map
-            (\( str, addr ) ->
-                Html.li [ instructionClass addr pc ]
-                    [ Html.div [] [ Html.text <| "0x" ++ toHex addr ]
-                    , Html.div [] [ Html.text str ]
+            (\instruction ->
+                Html.li [ instructionClass instruction.offset pc ]
+                    [ Html.div [] [ Html.text <| "0x" ++ toHex instruction.offset ]
+                    , Html.div [] [ Html.text <| instruction.mnemonic ++ " " ++ instruction.operand ]
                     ]
             )
-            (map2 (,) decodedRom [decodeStartRange pc..decodeEndRange pc])
+            instructions
         )
 
 
@@ -64,16 +84,3 @@ instructionClass address pc =
         class [ CurrentInstruction ]
     else
         class []
-
-
-decodeStartRange : Int -> Int
-decodeStartRange pc =
-    if pc < 20 then
-        0
-    else
-        pc - 20
-
-
-decodeEndRange : Int -> Int
-decodeEndRange pc =
-    pc + 20

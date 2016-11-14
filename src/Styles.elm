@@ -5,7 +5,7 @@ import Css.Elements exposing (body, ul, li, div)
 import Css.Namespace exposing (namespace)
 import Main
 import Registers
-import Instructions
+import Instruction
 import CssCommon
 
 
@@ -20,6 +20,6 @@ css =
               ]
             , CssCommon.styles
             , Registers.styles
-            , Instructions.styles
+            , Instruction.styles
             , Main.styles
             ]

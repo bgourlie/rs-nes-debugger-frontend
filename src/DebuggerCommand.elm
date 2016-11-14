@@ -1,47 +1,31 @@
 module DebuggerCommand exposing (decode, DebuggerCommand, DebuggerCommand(Break))
 
-import Json.Decode exposing (Decoder, (:=))
-import Json.Decode as Json
+import Json.Decode as Json exposing (Decoder, (:=))
+import CpuSnapshot
 
 
 type DebuggerCommand
-    = Break
+    = Break CpuSnapshot.Model
 
 
-type alias TransportMessage =
-    { command : String
-    }
+decoder : Decoder DebuggerCommand
+decoder =
+    ("command" := Json.string) `Json.andThen` decodeByCommand
 
 
-transportMessageDecoder : Decoder TransportMessage
-transportMessageDecoder =
-    Json.object1 TransportMessage
-        ("command" := Json.string)
-
-
-fromJson : String -> Result String DebuggerCommand
-fromJson json =
-    case Json.decodeString transportMessageDecoder json of
-        Ok transportMessage ->
-            commandFromTransportMessage transportMessage
-
-        Err message ->
-            Err "Malformed transport message"
-
-
-commandFromTransportMessage : TransportMessage -> Result String DebuggerCommand
-commandFromTransportMessage transportMsg =
-    case transportMsg.command of
-        "Break" ->
-            Ok Break
+decodeByCommand : String -> Decoder DebuggerCommand
+decodeByCommand cmd =
+    case cmd of
+        "break" ->
+            ("value" := CpuSnapshot.decoder) `Json.andThen` (\snapshot -> Json.succeed <| Break snapshot)
 
         _ ->
-            Err <| "Unexpected debugger command: " ++ transportMsg.command
+            Json.fail <| "Unknown debugger command: " ++ cmd
 
 
 decode : (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
 decode failHandler successHandler json =
-    case fromJson json of
+    case Json.decodeString decoder json of
         Ok cmd ->
             successHandler cmd
 
