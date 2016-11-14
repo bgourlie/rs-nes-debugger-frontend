@@ -67,6 +67,7 @@ styles =
     [ (#) Instructions
         [ Css.fontFamilies [ "monospace" ]
         , Css.property "border-spacing" "0"
+        , Css.height (Css.pct 100)
         , Css.children
             [ (.) CurrentInstruction
                 [ Css.backgroundColor Colors.currentLine

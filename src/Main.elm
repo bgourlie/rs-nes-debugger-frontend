@@ -143,11 +143,11 @@ view : Model -> Html AppMessage
 view model =
     div [ id Container ]
         [ header []
-            [ div [ id DebuggerButtons ]
+            [ Registers.view model.registers
+            , div [ id DebuggerButtons ]
                 [ button [ onClick StepClick ] [ text "Step" ]
                 , button [ onClick ContinueClick ] [ text "Continue" ]
                 ]
-            , Registers.view model.registers
             ]
         , div [ id TwoColumn ]
             [ div [ id InstructionsViewContainer ]
@@ -172,11 +172,12 @@ type CssIds
 styles : List Css.Snippet
 styles =
     [ (#) Container
-        [ Css.height (Css.vh 100)
+        [ Css.displayFlex
+        , Css.flexDirection Css.column
+        , Css.height (Css.vh 100)
         , Css.children
             [ Css.Elements.header
-                [ Css.displayFlex
-                , Css.flexDirection Css.row
+                [ Css.property "flex" "0 1 auto"
                 , Css.width (Css.pct 100)
                 , Css.backgroundColor Colors.headerColor
                 , Css.padding (Css.px 5)
@@ -187,13 +188,13 @@ styles =
     , (#) TwoColumn
         [ Css.displayFlex
         , Css.flexDirection Css.row
-        , Css.height (Css.pct 100)
+        , Css.property "flex" "1 1 auto"
         ]
     , (#) Console
         [ Css.fontFamily Css.monospace
+        , Css.height (Css.pct 100)
         , Css.padding2 (Css.px 5) (Css.px 10)
         , Css.backgroundColor Colors.consoleBackground
-        , Css.height (Css.pct 100)
         ]
     , (#) InstructionsViewContainer
         [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
@@ -202,5 +203,6 @@ styles =
     , (#) ConsoleContainer
         [ Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
         , Css.overflowY Css.auto
+        , Css.backgroundColor Colors.consoleBackground
         ]
     ]
