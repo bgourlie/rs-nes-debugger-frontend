@@ -19,7 +19,6 @@ css =
                     , margin (px 0)
                     , backgroundColor Colors.background
                     , color Colors.foreground
-                    , height (Css.vh 100)
                     ]
               ]
             , CssCommon.styles

@@ -66,8 +66,6 @@ type CssClasses
 styles =
     [ (#) Instructions
         [ Css.fontFamilies [ "monospace" ]
-        , Css.height (Css.pct 100)
-        , Css.width (Css.px 400)
         , Css.property "border-spacing" "0"
         , Css.children
             [ (.) CurrentInstruction

@@ -1,6 +1,6 @@
 module Registers exposing (new, decoder, Model, view, styles)
 
-import Html exposing (div, ul, li, h4, text, Html)
+import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
 import Html.Attributes exposing (title)
 import Bitwise exposing (and)
 import Json.Decode as Json exposing (Decoder, (:=))
@@ -82,23 +82,38 @@ decoder =
 view : Model -> Html msg
 view model =
     div [ id Registers ]
-        [ h4 [] [ text "Registers" ]
-        , ul [ class [ CssCommon.InlineList ] ]
-            [ li [ title "Program Counter" ] [ text <| "PC: " ++ toString model.pc ]
-            , li [ title "Stack Pointer" ] [ text <| "SP: " ++ toString model.sp ]
-            , li [ title "Accumulator" ] [ text <| "ACC: " ++ toString model.acc ]
-            , li [ title "Index (X)" ] [ text <| "X: " ++ toString model.x ]
-            , li [ title "Index (Y)" ] [ text <| "Y: " ++ toString model.y ]
+        [ table []
+            [ tr []
+                [ th [ title "Program Counter" ] [ text "PC" ]
+                , th [ title "Stack Pointer" ] [ text "SP" ]
+                , th [ title "Accumulator" ] [ text "ACC" ]
+                , th [ title "Index (X)" ] [ text "X" ]
+                , th [ title "Index (Y)" ] [ text "Y" ]
+                ]
+            , tr []
+                [ td [] [ text <| toString model.pc ]
+                , td [] [ text <| toString model.sp ]
+                , td [] [ text <| toString model.acc ]
+                , td [] [ text <| toString model.x ]
+                , td [] [ text <| toString model.y ]
+                ]
             ]
-        , div [ id StatusFlags ]
-            [ h4 [] [ text "Status Flags" ]
-            , ul [ class [ CssCommon.InlineList ] ]
-                [ li [] [ text <| "carry: " ++ flagDisplay (getCarry model) ]
-                , li [] [ text <| "zero: " ++ flagDisplay (getZero model) ]
-                , li [] [ text <| "interrupt: " ++ flagDisplay (getInterrupt model) ]
-                , li [] [ text <| "decimal: " ++ flagDisplay (getDecimal model) ]
-                , li [] [ text <| "overflow: " ++ flagDisplay (getOverflow model) ]
-                , li [] [ text <| "negative: " ++ flagDisplay (getNegative model) ]
+        , table []
+            [ tr []
+                [ th [ title "Carry Flag" ] [ text "C" ]
+                , th [ title "Zero Flag" ] [ text "Z" ]
+                , th [ title "Interrupt flag" ] [ text "I" ]
+                , th [ title "Decimal flag" ] [ text "D" ]
+                , th [ title "Overflow flag" ] [ text "V " ]
+                , th [ title "Sign flag" ] [ text "S" ]
+                ]
+            , tr []
+                [ td [] [ text <| flagDisplay (getCarry model) ]
+                , td [] [ text <| flagDisplay (getZero model) ]
+                , td [] [ text <| flagDisplay (getInterrupt model) ]
+                , td [] [ text <| flagDisplay (getDecimal model) ]
+                , td [] [ text <| flagDisplay (getOverflow model) ]
+                , td [] [ text <| flagDisplay (getNegative model) ]
                 ]
             ]
         ]
@@ -106,7 +121,6 @@ view model =
 
 type CssIds
     = Registers
-    | StatusFlags
 
 
 flagDisplay : Bool -> String
@@ -120,13 +134,10 @@ flagDisplay val =
 styles =
     [ (#) Registers
         [ Css.fontFamilies [ "monospace" ]
-        , Css.descendants
-            [ Css.Elements.h4
-                [ Css.marginBottom (Css.px 3)
+        , Css.children
+            [ Css.Elements.table
+                [ Css.display Css.inlineBlock
                 ]
             ]
-        ]
-    , (#) StatusFlags
-        [ Css.fontFamilies [ "monospace" ]
         ]
     ]

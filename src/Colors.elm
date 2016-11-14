@@ -33,3 +33,11 @@ gutterBorder =
 
 lineNumber =
     hex "#606366"
+
+
+headerColor =
+    hex "#313335"
+
+
+headerBorder =
+    hex "#606366"

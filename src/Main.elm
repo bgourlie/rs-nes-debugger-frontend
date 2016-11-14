@@ -143,13 +143,19 @@ view : Model -> Html AppMessage
 view model =
     div [ id Container ]
         [ header []
-            [ button [ onClick StepClick ] [ text "Step" ]
-            , button [ onClick ContinueClick ] [ text "Continue" ]
-            , div [] [ Registers.view model.registers ]
+            [ div [ id DebuggerButtons ]
+                [ button [ onClick StepClick ] [ text "Step" ]
+                , button [ onClick ContinueClick ] [ text "Continue" ]
+                ]
+            , Registers.view model.registers
             ]
         , div [ id TwoColumn ]
-            [ Instruction.view model.registers.pc model.instructions
-            , ul [ id Console, class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages))
+            [ div [ id InstructionsViewContainer ]
+                [ Instruction.view model.registers.pc model.instructions
+                ]
+            , div [ id ConsoleContainer ]
+                [ ul [ id Console, class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages))
+                ]
             ]
         ]
 
@@ -158,12 +164,25 @@ type CssIds
     = Container
     | TwoColumn
     | Console
+    | DebuggerButtons
+    | InstructionsViewContainer
+    | ConsoleContainer
 
 
 styles : List Css.Snippet
 styles =
     [ (#) Container
-        [ Css.padding (Css.px 5)
+        [ Css.height (Css.vh 100)
+        , Css.children
+            [ Css.Elements.header
+                [ Css.displayFlex
+                , Css.flexDirection Css.row
+                , Css.width (Css.pct 100)
+                , Css.backgroundColor Colors.headerColor
+                , Css.padding (Css.px 5)
+                , Css.borderBottom3 (Css.px 1) (Css.solid) Colors.headerBorder
+                ]
+            ]
         ]
     , (#) TwoColumn
         [ Css.displayFlex
@@ -172,7 +191,16 @@ styles =
         ]
     , (#) Console
         [ Css.fontFamily Css.monospace
-        , Css.padding (Css.px 5)
+        , Css.padding2 (Css.px 5) (Css.px 10)
         , Css.backgroundColor Colors.consoleBackground
+        , Css.height (Css.pct 100)
+        ]
+    , (#) InstructionsViewContainer
+        [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
+        , Css.overflowY Css.auto
+        ]
+    , (#) ConsoleContainer
+        [ Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
+        , Css.overflowY Css.auto
         ]
     ]
