@@ -54,12 +54,23 @@ type alias Model =
     , registers : Registers.Model
     , autoStepEnabled : Bool
     , autoStepInterval : Float
+    , stepRequestPending : Bool
     }
 
 
 init : ( Model, Cmd AppMessage )
 init =
-    ( { messages = [ "Welcome to the rs-nes debugger!" ], instructions = [], registers = Registers.new, autoStepEnabled = False, autoStepInterval = Time.inMilliseconds 20 }, Cmd.none )
+    let
+        model =
+            { messages = [ "Welcome to the rs-nes debugger!" ]
+            , instructions = []
+            , registers = Registers.new
+            , autoStepEnabled = False
+            , autoStepInterval = Time.inMilliseconds 100
+            , stepRequestPending = False
+            }
+    in
+        ( model, Cmd.none )
 
 
 
@@ -90,7 +101,7 @@ update msg model =
             ( { model | autoStepEnabled = not model.autoStepEnabled }, Cmd.none )
 
         AutoStepTick time ->
-            ( model, Step.request StepRequestFail StepRequestSuccess )
+            stepRequest model
 
         DebuggerCommandReceiveSuccess cmd ->
             handleDebuggerCommand model cmd
@@ -108,13 +119,13 @@ update msg model =
             ( { model | messages = (("Set breakpoint fail: " ++ toString err) :: model.messages) }, Cmd.none )
 
         StepClick ->
-            ( model, Step.request StepRequestFail StepRequestSuccess )
+            stepRequest model
 
         StepRequestSuccess resp ->
-            ( model, Cmd.none )
+            ( { model | stepRequestPending = False }, Cmd.none )
 
         StepRequestFail err ->
-            ( { model | messages = (("Step request fail: " ++ toString err) :: model.messages) }, Cmd.none )
+            ( { model | autoStepEnabled = False, messages = (("Step request fail: " ++ toString err) :: model.messages) }, Cmd.none )
 
         ContinueClick ->
             ( { model | autoStepEnabled = False }, Continue.request ContinueRequestFail ContinueRequestSuccess )
@@ -127,6 +138,14 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+stepRequest : Model -> (Model, Cmd AppMessage)
+stepRequest model =
+    if model.stepRequestPending then
+        ( model, Cmd.none )
+    else
+        ( { model | stepRequestPending = True }, Step.request StepRequestFail StepRequestSuccess )
 
 
 handleDebuggerCommand : Model -> DebuggerCommand -> ( Model, Cmd AppMessage )
