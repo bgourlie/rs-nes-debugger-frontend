@@ -1,9 +1,11 @@
 port module Main exposing (..)
 
-import Html exposing (Html, Attribute, div, text, ul, li, button, header)
+import Html exposing (Html, Attribute, div, text, ul, li, button, header, input)
+import Html.Attributes exposing (disabled, checked, type')
 import Html.Events exposing (onClick)
 import Html.App as App
 import Http
+import Time exposing (Time, every)
 import WebSocket
 import Css exposing ((#))
 import Css.Elements
@@ -50,12 +52,14 @@ type alias Model =
     { messages : List String
     , instructions : List Instruction.Model
     , registers : Registers.Model
+    , autoStepEnabled : Bool
+    , autoStepInterval : Float
     }
 
 
 init : ( Model, Cmd AppMessage )
 init =
-    ( { messages = [ "Welcome to the rs-nes debugger!" ], instructions = [], registers = Registers.new }, Cmd.none )
+    ( { messages = [ "Welcome to the rs-nes debugger!" ], instructions = [], registers = Registers.new, autoStepEnabled = False, autoStepInterval = Time.inMilliseconds 20 }, Cmd.none )
 
 
 
@@ -74,12 +78,20 @@ type AppMessage
     | ContinueClick
     | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
+    | ToggleAutoStep
+    | AutoStepTick Time
     | NoOp
 
 
 update : AppMessage -> Model -> ( Model, Cmd AppMessage )
 update msg model =
     case msg of
+        ToggleAutoStep ->
+            ( { model | autoStepEnabled = not model.autoStepEnabled }, Cmd.none )
+
+        AutoStepTick time ->
+            ( model, Step.request StepRequestFail StepRequestSuccess )
+
         DebuggerCommandReceiveSuccess cmd ->
             handleDebuggerCommand model cmd
 
@@ -105,7 +117,7 @@ update msg model =
             ( { model | messages = (("Step request fail: " ++ toString err) :: model.messages) }, Cmd.none )
 
         ContinueClick ->
-            ( model, Continue.request ContinueRequestFail ContinueRequestSuccess )
+            ( { model | autoStepEnabled = False }, Continue.request ContinueRequestFail ContinueRequestSuccess )
 
         ContinueRequestSuccess resp ->
             ( { model | messages = ("Continued!" :: model.messages) }, Cmd.none )
@@ -130,9 +142,17 @@ handleDebuggerCommand model cmd =
 
 subscriptions : Model -> Sub AppMessage
 subscriptions model =
-    Sub.batch
-        [ WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
-        ]
+    let
+        autoStepSubscription =
+            if model.autoStepEnabled then
+                Time.every model.autoStepInterval AutoStepTick
+            else
+                Sub.none
+    in
+        Sub.batch
+            [ WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
+            , autoStepSubscription
+            ]
 
 
 
@@ -145,7 +165,8 @@ view model =
         [ header []
             [ Registers.view model.registers
             , div [ id DebuggerButtons ]
-                [ button [ onClick StepClick ] [ text "Step" ]
+                [ button [ onClick StepClick, disabled model.autoStepEnabled ] [ text "Step" ]
+                , input [ type' "checkbox", checked model.autoStepEnabled, onClick ToggleAutoStep ] []
                 , button [ onClick ContinueClick ] [ text "Continue" ]
                 ]
             ]
