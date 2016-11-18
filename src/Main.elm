@@ -1,9 +1,10 @@
 port module Main exposing (..)
 
-import Html exposing (Html, Attribute, div, text, ul, li, button, header, input)
+import Html exposing (Html, Attribute, div, text, ul, li, button, header, input, svg)
 import Html.Attributes exposing (disabled, checked, type')
 import Html.Events exposing (onClick)
 import Html.App as App
+import Set exposing (Set)
 import Http
 import Time exposing (Time, every)
 import WebSocket
@@ -52,10 +53,23 @@ type alias Model =
     { messages : List String
     , instructions : List Instruction.Model
     , registers : Registers.Model
-    , autoStepEnabled : Bool
-    , autoStepInterval : Float
-    , stepRequestPending : Bool
+    , stepState : StepState
+    , breakpoints : Set Int
     }
+
+
+type StepState
+    = Off
+    | SingleStepping
+    | AutoStepping
+
+
+type StepInput
+    = SingleStep
+    | AutoStepToggle
+    | AutoStepOff
+    | StepRequestSucceeded
+    | StepRequestFailed
 
 
 init : ( Model, Cmd AppMessage )
@@ -65,9 +79,8 @@ init =
             { messages = [ "Welcome to the rs-nes debugger!" ]
             , instructions = []
             , registers = Registers.new
-            , autoStepEnabled = False
-            , autoStepInterval = Time.inMilliseconds 100
-            , stepRequestPending = False
+            , stepState = Off
+            , breakpoints = Set.empty
             }
     in
         ( model, Cmd.none )
@@ -80,98 +93,172 @@ init =
 type AppMessage
     = DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
-    | SetBreakpointClick Int
-    | SetBreakpointRequestSuccess ToggleBreakpoint.Model
-    | SetBreakpointRequestFail Http.Error
+    | ToggleBreakpointClick Int
+    | ToggleBreakpointRequestSuccess ToggleBreakpoint.Model
+    | ToggleBreakpointRequestFail Http.Error
     | StepClick
     | StepRequestSuccess Step.Model
     | StepRequestFail Http.Error
     | ContinueClick
     | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
-    | ToggleAutoStep
-    | AutoStepTick Time
+    | ToggleAutoStepClicked
     | NoOp
 
 
 update : AppMessage -> Model -> ( Model, Cmd AppMessage )
 update msg model =
     case msg of
-        ToggleAutoStep ->
-            ( { model | autoStepEnabled = not model.autoStepEnabled }, Cmd.none )
-
-        AutoStepTick time ->
-            stepRequest model
+        ToggleAutoStepClicked ->
+            handleStepInput AutoStepToggle model
 
         DebuggerCommandReceiveSuccess cmd ->
             handleDebuggerCommand model cmd
 
         DebuggerCommandReceiveFail msg ->
-            ( { model | messages = (("Unable to receive debugger command: " ++ msg) :: model.messages) }, Cmd.none )
+            let
+                newModel =
+                    addMessage model ("Unable to receive debugger command: " ++ msg)
+            in
+                ( newModel, Cmd.none )
 
-        SetBreakpointClick address ->
-            ( model, ToggleBreakpoint.request address SetBreakpointRequestFail SetBreakpointRequestSuccess )
+        ToggleBreakpointClick address ->
+            ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
 
-        SetBreakpointRequestSuccess resp ->
-            ( { model | messages = (("Breakpoint set at " ++ toString resp.address) :: model.messages) }, Cmd.none )
+        ToggleBreakpointRequestSuccess resp ->
+            let
+                newModel =
+                    addMessage model ("Breakpoint set at " ++ toString resp.offset)
+            in
+                ( { newModel | breakpoints = (updateBreakpoints model.breakpoints resp) }, Cmd.none )
 
-        SetBreakpointRequestFail err ->
-            ( { model | messages = (("Set breakpoint fail: " ++ toString err) :: model.messages) }, Cmd.none )
+        ToggleBreakpointRequestFail err ->
+            let
+                newModel =
+                    addMessage model ("Set breakpoint fail: " ++ toString err)
+            in
+                ( newModel, Cmd.none )
 
         StepClick ->
-            stepRequest model
+            handleStepInput SingleStep model
 
         StepRequestSuccess resp ->
-            ( { model | stepRequestPending = False }, Cmd.none )
+            handleStepInput StepRequestSucceeded model
 
         StepRequestFail err ->
-            ( { model | autoStepEnabled = False, messages = (("Step request fail: " ++ toString err) :: model.messages) }, Cmd.none )
+            handleStepInput StepRequestFailed model
 
         ContinueClick ->
-            ( { model | autoStepEnabled = False }, Continue.request ContinueRequestFail ContinueRequestSuccess )
+            let
+                ( handleStepModel, handleStepCmd ) =
+                    handleStepInput AutoStepOff model
+            in
+                ( handleStepModel, Cmd.batch [ handleStepCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
 
         ContinueRequestSuccess resp ->
-            ( { model | messages = ("Continued!" :: model.messages) }, Cmd.none )
+            let
+                newModel =
+                    addMessage model "Continued!"
+            in
+                ( newModel, Cmd.none )
 
         ContinueRequestFail err ->
-            ( { model | messages = (("Continue request fail: " ++ toString err) :: model.messages) }, Cmd.none )
+            let
+                newModel =
+                    addMessage model ("Continue request fail: " ++ toString err)
+            in
+                ( newModel, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
 
 
-stepRequest : Model -> (Model, Cmd AppMessage)
-stepRequest model =
-    if model.stepRequestPending then
-        ( model, Cmd.none )
+addMessage : Model -> String -> Model
+addMessage model message =
+    { model | messages = message :: model.messages }
+
+
+updateBreakpoints : Set Int -> ToggleBreakpoint.Model -> Set Int
+updateBreakpoints breakpoints toggleBreakpointResponse =
+    if toggleBreakpointResponse.isSet then
+        Set.insert toggleBreakpointResponse.offset breakpoints
     else
-        ( { model | stepRequestPending = True }, Step.request StepRequestFail StepRequestSuccess )
+        Set.remove toggleBreakpointResponse.offset breakpoints
+
+
+stepStateTransition : StepState -> StepInput -> StepState
+stepStateTransition currentState input =
+    case currentState of
+        Off ->
+            case input of
+                SingleStep ->
+                    SingleStepping
+
+                AutoStepToggle ->
+                    AutoStepping
+
+                _ ->
+                    Off
+
+        SingleStepping ->
+            case input of
+                _ ->
+                    Off
+
+        AutoStepping ->
+            case input of
+                StepRequestSucceeded ->
+                    AutoStepping
+
+                SingleStep ->
+                    SingleStepping
+
+                _ ->
+                    Off
+
+
+handleStepInput : StepInput -> Model -> ( Model, Cmd AppMessage )
+handleStepInput input model =
+    case stepStateTransition model.stepState input of
+        Off ->
+            ( { model | stepState = Off }, Cmd.none )
+
+        SingleStepping ->
+            ( { model | stepState = SingleStepping }, Step.request StepRequestFail StepRequestSuccess )
+
+        AutoStepping ->
+            ( { model | stepState = AutoStepping }, Step.request StepRequestFail StepRequestSuccess )
+
+
+onBreakpoint : Model -> Bool
+onBreakpoint model =
+    Set.member model.registers.pc model.breakpoints
 
 
 handleDebuggerCommand : Model -> DebuggerCommand -> ( Model, Cmd AppMessage )
 handleDebuggerCommand model cmd =
     case cmd of
-        Break snapshot ->
+        Break reason snapshot ->
             let
                 pc =
                     snapshot.registers.pc
+
+                newModel =
+                    case reason of
+                        DebuggerCommand.Breakpoint ->
+                            addMessage model ("Breakpoint hit @ 0x" ++ toHex pc)
+
+                        _ ->
+                            model
             in
-                ( { model | messages = (("Breaking @ 0x" ++ toHex pc) :: model.messages), instructions = snapshot.instructions, registers = snapshot.registers }, Cmd.none )
+                ( { newModel | instructions = snapshot.instructions, registers = snapshot.registers }, Cmd.none )
 
 
 subscriptions : Model -> Sub AppMessage
 subscriptions model =
-    let
-        autoStepSubscription =
-            if model.autoStepEnabled then
-                Time.every model.autoStepInterval AutoStepTick
-            else
-                Sub.none
-    in
-        Sub.batch
-            [ WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
-            , autoStepSubscription
-            ]
+    Sub.batch
+        [ WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
+        ]
 
 
 
@@ -184,20 +271,30 @@ view model =
         [ header []
             [ Registers.view model.registers
             , div [ id DebuggerButtons ]
-                [ button [ onClick StepClick, disabled model.autoStepEnabled ] [ text "Step" ]
-                , input [ type' "checkbox", checked model.autoStepEnabled, onClick ToggleAutoStep ] []
+                [ button [ onClick StepClick, disabled <| autoStepEnabled model ] [ text "Step" ]
+                , input [ type' "checkbox", checked <| autoStepEnabled model, onClick ToggleAutoStepClicked ] []
                 , button [ onClick ContinueClick ] [ text "Continue" ]
                 ]
             ]
         , div [ id TwoColumn ]
             [ div [ id InstructionsViewContainer ]
-                [ Instruction.view model.registers.pc model.instructions
+                [ Instruction.view (\address -> ToggleBreakpointClick address) model.breakpoints model.registers.pc model.instructions
                 ]
             , div [ id ConsoleContainer ]
                 [ ul [ id Console, class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages))
                 ]
             ]
         ]
+
+
+autoStepEnabled : Model -> Bool
+autoStepEnabled model =
+    case model.stepState of
+        AutoStepping ->
+            True
+
+        _ ->
+            False
 
 
 type CssIds

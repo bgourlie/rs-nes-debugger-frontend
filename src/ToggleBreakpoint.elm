@@ -7,7 +7,7 @@ import Http
 
 
 type alias Model =
-    { address : Int
+    { offset : Int
     , isSet : Bool
     }
 
@@ -15,8 +15,8 @@ type alias Model =
 decoder : Decoder Model
 decoder =
     Json.Decode.object2 Model
-        ("address" := Json.Decode.int)
-        ("isSet" := Json.Decode.bool)
+        ("offset" := Json.Decode.int)
+        ("is_set" := Json.Decode.bool)
 
 
 endpoint : Int -> String

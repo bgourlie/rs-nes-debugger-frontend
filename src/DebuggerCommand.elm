@@ -1,11 +1,16 @@
-module DebuggerCommand exposing (decode, DebuggerCommand, DebuggerCommand(Break))
+module DebuggerCommand exposing (decode, DebuggerCommand, DebuggerCommand(Break), BreakReason(Step, Breakpoint))
 
 import Json.Decode as Json exposing (Decoder, (:=))
 import CpuSnapshot
 
 
 type DebuggerCommand
-    = Break CpuSnapshot.Model
+    = Break BreakReason CpuSnapshot.Model
+
+
+type BreakReason
+    = Step
+    | Breakpoint
 
 
 decoder : Decoder DebuggerCommand
@@ -17,10 +22,30 @@ decodeByCommand : String -> Decoder DebuggerCommand
 decodeByCommand cmd =
     case cmd of
         "break" ->
-            ("value" := CpuSnapshot.decoder) `Json.andThen` (\snapshot -> Json.succeed <| Break snapshot)
+            Json.object2 (,)
+                ("reason" := breakReasonDecoder)
+                ("snapshot" := CpuSnapshot.decoder)
+                `Json.andThen` (\( reason, snapshot ) -> Json.succeed <| Break reason snapshot)
 
         _ ->
             Json.fail <| "Unknown debugger command: " ++ cmd
+
+
+breakReasonDecoder : Decoder BreakReason
+breakReasonDecoder =
+    Json.string
+        `Json.andThen`
+            (\reason ->
+                case reason of
+                    "step" ->
+                        Json.succeed Step
+
+                    "breakpoint" ->
+                        Json.succeed Breakpoint
+
+                    _ ->
+                        Json.fail <| "Unexpected break reason: " ++ reason
+            )
 
 
 decode : (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
