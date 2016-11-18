@@ -128,7 +128,7 @@ update msg model =
         ToggleBreakpointRequestSuccess resp ->
             let
                 newModel =
-                    addMessage model ("Breakpoint set at " ++ toString resp.offset)
+                    addMessage model ("Breakpoint set @ 0x" ++ toString resp.offset)
             in
                 ( { newModel | breakpoints = (updateBreakpoints model.breakpoints resp) }, Cmd.none )
 
@@ -236,22 +236,29 @@ onBreakpoint model =
 
 
 handleDebuggerCommand : Model -> DebuggerCommand -> ( Model, Cmd AppMessage )
-handleDebuggerCommand model cmd =
-    case cmd of
+handleDebuggerCommand model debuggerCommand =
+    case debuggerCommand of
         Break reason snapshot ->
             let
-                pc =
-                    snapshot.registers.pc
+                registers =
+                    snapshot.registers
 
-                newModel =
+                pc =
+                    registers.pc
+
+                ( newModel, cmd ) =
                     case reason of
                         DebuggerCommand.Breakpoint ->
-                            addMessage model ("Breakpoint hit @ 0x" ++ toHex pc)
+                            let
+                                ( postStepModel, postStepCmd ) =
+                                    handleStepInput AutoStepOff model
+                            in
+                                ( addMessage postStepModel ("Breakpoint hit @ 0x" ++ toHex pc), postStepCmd )
 
                         _ ->
-                            model
+                            ( model, Cmd.none )
             in
-                ( { newModel | instructions = snapshot.instructions, registers = snapshot.registers }, Cmd.none )
+                ( { newModel | instructions = snapshot.instructions, registers = registers }, cmd )
 
 
 subscriptions : Model -> Sub AppMessage
