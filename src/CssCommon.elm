@@ -6,7 +6,7 @@ import Html.CssHelpers
 
 
 namespace =
-    "rsnes-debugger"
+    ""
 
 
 helpers =

@@ -1,4 +1,4 @@
-module Instruction exposing (view, styles, decoder, Model)
+module Instruction exposing (view, styles, decoder, Model, CssIds(CurrentInstruction))
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
@@ -43,7 +43,7 @@ view breakpointClickHandler breakpoints pc instructions =
     Html.table [ id Instructions ]
         (map
             (\instruction ->
-                Html.tr [ instructionClass instruction.offset pc ]
+                Html.tr (currentInstructionAttrs instruction.offset pc)
                     [ Html.td [ class [ Gutter ] ]
                         [ Html.div [ class [ MemoryLocation ] ] [ Html.text <| "0x" ++ toHex instruction.offset ]
                         , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
@@ -97,7 +97,7 @@ styles =
         , Css.height (Css.pct 100)
         , Css.width (Css.pct 100)
         , Css.children
-            [ (.) CurrentInstruction
+            [ (#) CurrentInstruction
                 [ Css.backgroundColor Colors.currentLine
                 ]
             ]
@@ -129,11 +129,11 @@ styles =
     ]
 
 
-instructionClass address pc =
+currentInstructionAttrs address pc =
     if address == pc then
-        class [ CurrentInstruction ]
+        [ id CurrentInstruction ]
     else
-        class []
+        []
 
 
 breakpointClass breakpoints offset =

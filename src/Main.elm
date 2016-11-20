@@ -45,6 +45,9 @@ main =
         }
 
 
+port scrollElementIntoView : String -> Cmd msg
+
+
 
 -- MODEL
 
@@ -103,6 +106,7 @@ type AppMessage
     | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
     | ToggleAutoStepClicked
+    | ScrollInstructionIntoView
     | NoOp
 
 
@@ -156,11 +160,7 @@ update msg model =
                 ( handleStepModel, Cmd.batch [ handleStepCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
 
         ContinueRequestSuccess resp ->
-            let
-                newModel =
-                    addMessage model "Continued!"
-            in
-                ( newModel, Cmd.none )
+            ( model, Cmd.none )
 
         ContinueRequestFail err ->
             let
@@ -168,6 +168,9 @@ update msg model =
                     addMessage model ("Continue request fail: " ++ toString err)
             in
                 ( newModel, Cmd.none )
+
+        ScrollInstructionIntoView ->
+            ( model, scrollElementIntoView <| toString Instruction.CurrentInstruction )
 
         NoOp ->
             ( model, Cmd.none )
@@ -281,6 +284,7 @@ view model =
                 [ button [ onClick StepClick, disabled <| autoStepEnabled model ] [ text "Step" ]
                 , input [ type' "checkbox", checked <| autoStepEnabled model, onClick ToggleAutoStepClicked ] []
                 , button [ onClick ContinueClick ] [ text "Continue" ]
+                , button [ onClick ScrollInstructionIntoView ] [ text "Locate Current Instruction" ]
                 ]
             ]
         , div [ id TwoColumn ]
