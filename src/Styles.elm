@@ -6,6 +6,7 @@ import Css.Namespace exposing (namespace)
 import Main
 import Registers
 import Instruction
+import Console
 import CssCommon
 import Colors
 
@@ -35,7 +36,8 @@ css =
                     ]
               ]
             , CssCommon.styles
+            , Main.styles
             , Registers.styles
             , Instruction.styles
-            , Main.styles
+            , Console.styles
             ]

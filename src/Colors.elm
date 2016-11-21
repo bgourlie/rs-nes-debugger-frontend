@@ -41,3 +41,7 @@ headerColor =
 
 headerBorder =
     hex "#606366"
+
+
+messageRepeatBackgroundColor =
+    hex "#214283"

@@ -21,10 +21,6 @@ endpoint =
     "http://localhost:9975/continue"
 
 
-
---attempt : (Result x a -> msg) -> Task x a -> Cmd msg
-
-
 request : (Http.Error -> msg) -> (Model -> msg) -> Cmd msg
 request failHandler successHandler =
     let

@@ -3,6 +3,7 @@ port module Main exposing (..)
 import Html exposing (Html, Attribute, div, text, ul, li, button, header, input)
 import Html.Attributes exposing (disabled, checked, type_)
 import Html.Events exposing (onClick)
+import Dom
 import Set exposing (Set)
 import Http
 import WebSocket
@@ -16,7 +17,11 @@ import ToggleBreakpoint
 import Continue
 import Registers
 import Step
+import Console
 import Colors
+
+
+-- TODO Add a local addMessage method to DRY things up
 
 
 { id, class, classList } =
@@ -46,7 +51,7 @@ port scrollElementIntoView : String -> Cmd msg
 
 
 type alias Model =
-    { messages : List String
+    { messages : List ( String, Int )
     , cycles : Int
     , instructions : List Instruction.Model
     , registers : Registers.Model
@@ -73,7 +78,7 @@ init : ( Model, Cmd AppMessage )
 init =
     let
         model =
-            { messages = [ "Welcome to the rs-nes debugger!" ]
+            { messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
             , instructions = []
             , registers = Registers.new
@@ -102,6 +107,8 @@ type AppMessage
     | ContinueRequestFail Http.Error
     | ToggleAutoStepClicked
     | ScrollInstructionIntoView
+    | ScrollConsoleFail Dom.Error
+    | ScrollConsoleSucceed
     | NoOp
 
 
@@ -116,27 +123,33 @@ update msg model =
 
         DebuggerCommandReceiveFail msg ->
             let
-                newModel =
-                    addMessage model ("Unable to receive debugger command: " ++ msg)
+                ( newModel, cmd ) =
+                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Unable to receive debugger command: " ++ msg)
             in
-                ( newModel, Cmd.none )
+                ( newModel, cmd )
 
         ToggleBreakpointClick address ->
             ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
 
         ToggleBreakpointRequestSuccess resp ->
             let
-                newModel =
-                    addMessage model ("Breakpoint set @ 0x" ++ toString resp.offset)
+                verb =
+                    if resp.isSet then
+                        "set"
+                    else
+                        "unset"
+
+                ( newModel, cmd ) =
+                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Breakpoint " ++ verb ++ " @ 0x" ++ toHex resp.offset)
             in
-                ( { newModel | breakpoints = (updateBreakpoints model.breakpoints resp) }, Cmd.none )
+                ( { newModel | breakpoints = (updateBreakpoints model.breakpoints resp) }, cmd )
 
         ToggleBreakpointRequestFail err ->
             let
-                newModel =
-                    addMessage model ("Set breakpoint fail: " ++ toString err)
+                ( newModel, cmd ) =
+                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Set breakpoint fail: " ++ toString err)
             in
-                ( newModel, Cmd.none )
+                ( newModel, cmd )
 
         StepClick ->
             handleStepInput SingleStep model
@@ -159,21 +172,22 @@ update msg model =
 
         ContinueRequestFail err ->
             let
-                newModel =
-                    addMessage model ("Continue request fail: " ++ toString err)
+                ( newModel, cmd ) =
+                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err)
             in
-                ( newModel, Cmd.none )
+                ( newModel, cmd )
 
         ScrollInstructionIntoView ->
             ( model, scrollElementIntoView <| toString Instruction.CurrentInstruction )
 
-        NoOp ->
+        ScrollConsoleSucceed ->
             ( model, Cmd.none )
 
+        ScrollConsoleFail _ ->
+            ( model, Cmd.none )
 
-addMessage : Model -> String -> Model
-addMessage model message =
-    { model | messages = message :: model.messages }
+        NoOp ->
+            ( model, Cmd.none )
 
 
 updateBreakpoints : Set Int -> ToggleBreakpoint.Model -> Set Int
@@ -251,15 +265,22 @@ handleBreakCondition model breakReason =
             let
                 ( postStepModel, postStepCmd ) =
                     handleStepInput AutoStepOff model
+
+                ( postMessageModel, postMessageCmd ) =
+                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Breakpoint hit @ 0x" ++ toHex model.registers.pc)
             in
-                ( addMessage postStepModel ("Breakpoint hit @ 0x" ++ toHex model.registers.pc), postStepCmd )
+                ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
 
         DebuggerCommand.Trap ->
+            -- TODO: This branch in nearly identical to above.  DRY this up.
             let
                 ( postStepModel, postStepCmd ) =
                     handleStepInput AutoStepOff model
+
+                ( postMessageModel, postMessageCmd ) =
+                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Trap detected @ 0x" ++ toHex model.registers.pc)
             in
-                ( addMessage postStepModel ("Trap detected @ 0x" ++ toHex model.registers.pc), postStepCmd )
+                ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
 
         _ ->
             ( model, Cmd.none )
@@ -294,7 +315,7 @@ view model =
                 [ Instruction.view (\address -> ToggleBreakpointClick address) model.breakpoints model.registers.pc model.instructions
                 ]
             , div [ id ConsoleContainer ]
-                [ ul [ id Console, class [ CssCommon.List ] ] (List.map (\msg -> li [] [ text msg ]) (List.reverse model.messages))
+                [ Console.view model
                 ]
             ]
         ]
@@ -313,7 +334,6 @@ autoStepEnabled model =
 type CssIds
     = Container
     | TwoColumn
-    | Console
     | DebuggerButtons
     | InstructionsViewContainer
     | ConsoleContainer
@@ -345,11 +365,6 @@ styles =
         [ Css.displayFlex
         , Css.flexDirection Css.row
         , Css.property "flex" "1 1 auto"
-        ]
-    , (#) Console
-        [ Css.height (Css.pct 100)
-        , Css.padding2 (Css.px 5) (Css.px 10)
-        , Css.backgroundColor Colors.consoleBackground
         ]
     , (#) InstructionsViewContainer
         [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
