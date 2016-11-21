@@ -1,19 +1,16 @@
 port module Main exposing (..)
 
 import Html exposing (Html, Attribute, div, text, ul, li, button, header, input)
-import Svg exposing (svg)
 import Html.Attributes exposing (disabled, checked, type_)
 import Html.Events exposing (onClick)
 import Set exposing (Set)
 import Http
-import Time exposing (Time, every)
 import WebSocket
 import Css exposing ((#))
 import Css.Elements
 import ParseInt exposing (toHex)
 import CssCommon
 import DebuggerCommand exposing (DebuggerCommand(Break))
-import CpuSnapshot
 import Instruction
 import ToggleBreakpoint
 import Continue
