@@ -54,6 +54,7 @@ port scrollElementIntoView : String -> Cmd msg
 
 type alias Model =
     { messages : List String
+    , cycles : Int
     , instructions : List Instruction.Model
     , registers : Registers.Model
     , stepState : StepState
@@ -80,6 +81,7 @@ init =
     let
         model =
             { messages = [ "Welcome to the rs-nes debugger!" ]
+            , cycles = 0
             , instructions = []
             , registers = Registers.new
             , stepState = Off
@@ -243,25 +245,30 @@ handleDebuggerCommand model debuggerCommand =
     case debuggerCommand of
         Break reason snapshot ->
             let
-                registers =
-                    snapshot.registers
-
-                pc =
-                    registers.pc
-
                 ( newModel, cmd ) =
-                    case reason of
-                        DebuggerCommand.Breakpoint ->
-                            let
-                                ( postStepModel, postStepCmd ) =
-                                    handleStepInput AutoStepOff model
-                            in
-                                ( addMessage postStepModel ("Breakpoint hit @ 0x" ++ toHex pc), postStepCmd )
-
-                        _ ->
-                            ( model, Cmd.none )
+                    handleBreakCondition model reason
             in
-                ( { newModel | instructions = snapshot.instructions, registers = registers }, cmd )
+                ( { newModel | instructions = snapshot.instructions, registers = snapshot.registers, cycles = snapshot.cycles }, cmd )
+
+handleBreakCondition : Model -> DebuggerCommand.BreakReason -> ( Model, Cmd AppMessage )
+handleBreakCondition model breakReason =
+    case breakReason of
+        DebuggerCommand.Breakpoint ->
+            let
+                ( postStepModel, postStepCmd ) =
+                    handleStepInput AutoStepOff model
+            in
+                ( addMessage postStepModel ("Breakpoint hit @ 0x" ++ toHex model.registers.pc), postStepCmd )
+
+        DebuggerCommand.Trap ->
+            let
+                ( postStepModel, postStepCmd ) =
+                    handleStepInput AutoStepOff model
+            in
+                ( addMessage postStepModel ("Trap detected @ 0x" ++ toHex model.registers.pc), postStepCmd )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub AppMessage
@@ -286,6 +293,7 @@ view model =
                 , button [ onClick ContinueClick ] [ text "Continue" ]
                 , button [ onClick ScrollInstructionIntoView ] [ text "Locate Current Instruction" ]
                 ]
+            , div [] [ text <| "Cycles: " ++ toString model.cycles ]
             ]
         , div [ id TwoColumn ]
             [ div [ id InstructionsViewContainer ]
@@ -328,8 +336,14 @@ styles =
                 [ Css.property "flex" "0 1 auto"
                 , Css.width (Css.pct 100)
                 , Css.backgroundColor Colors.headerColor
-                , Css.padding (Css.px 5)
                 , Css.borderBottom3 (Css.px 1) (Css.solid) Colors.headerBorder
+                , Css.padding (Css.px 5)
+                , Css.boxShadow5 (Css.px 0) (Css.px 2) (Css.px 2) (Css.px -2) (Css.rgba 0 0 0 0.4)
+                , Css.children
+                    [ Css.Elements.div
+                        [ Css.display Css.inlineBlock
+                        ]
+                    ]
                 ]
             ]
         ]
@@ -339,8 +353,7 @@ styles =
         , Css.property "flex" "1 1 auto"
         ]
     , (#) Console
-        [ Css.fontFamily Css.monospace
-        , Css.height (Css.pct 100)
+        [ Css.height (Css.pct 100)
         , Css.padding2 (Css.px 5) (Css.px 10)
         , Css.backgroundColor Colors.consoleBackground
         ]

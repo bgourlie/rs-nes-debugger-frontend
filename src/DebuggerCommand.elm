@@ -1,4 +1,4 @@
-module DebuggerCommand exposing (decode, DebuggerCommand, DebuggerCommand(Break), BreakReason(Step, Breakpoint))
+module DebuggerCommand exposing (decode, DebuggerCommand, DebuggerCommand(Break), BreakReason(Step, Breakpoint, Trap))
 
 import Json.Decode as Json exposing (Decoder, (:=))
 import CpuSnapshot
@@ -11,6 +11,7 @@ type DebuggerCommand
 type BreakReason
     = Step
     | Breakpoint
+    | Trap
 
 
 decoder : Decoder DebuggerCommand
@@ -42,6 +43,9 @@ breakReasonDecoder =
 
                     "breakpoint" ->
                         Json.succeed Breakpoint
+
+                    "trap" ->
+                        Json.succeed Trap
 
                     _ ->
                         Json.fail <| "Unexpected break reason: " ++ reason
