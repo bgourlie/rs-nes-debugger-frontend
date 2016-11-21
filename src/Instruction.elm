@@ -2,11 +2,11 @@ module Instruction exposing (view, styles, decoder, Model, CssIds(CurrentInstruc
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
+import List exposing (map, map2)
 import Set exposing (Set)
 import Svg exposing (svg)
 import Svg.Attributes
-import Json.Decode as Json exposing (Decoder, (:=))
-import List exposing (map, map2)
+import Json.Decode as Json exposing (Decoder, field)
 import ParseInt exposing (toHex)
 import Css exposing ((#), (.))
 import Css.Elements as CssElem
@@ -19,10 +19,6 @@ import Colors
     CssCommon.helpers
 
 
-
---
-
-
 type alias Model =
     { mnemonic : String
     , operand : String
@@ -32,10 +28,10 @@ type alias Model =
 
 decoder : Decoder Model
 decoder =
-    Json.object3 Model
-        ("mnemonic" := Json.string)
-        ("operand" := Json.string)
-        ("offset" := Json.int)
+    Json.map3 Model
+        (field "mnemonic" Json.string)
+        (field "operand" Json.string)
+        (field "offset" Json.int)
 
 
 view : (Int -> msg) -> Set Int -> Int -> List Model -> Html msg

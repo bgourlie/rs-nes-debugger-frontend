@@ -2,8 +2,7 @@ module Continue exposing (request, Model)
 
 import Task
 import Http
-import Json.Decode
-import Json.Decode exposing (Decoder, (:=))
+import Json.Decode exposing (Decoder, field)
 
 
 type alias Model =
@@ -13,8 +12,8 @@ type alias Model =
 
 decoder : Decoder Model
 decoder =
-    Json.Decode.object1 Model
-        ("continued" := Json.Decode.bool)
+    Json.Decode.map Model
+        (field "continued" Json.Decode.bool)
 
 
 endpoint : String
@@ -22,6 +21,21 @@ endpoint =
     "http://localhost:9975/continue"
 
 
+
+--attempt : (Result x a -> msg) -> Task x a -> Cmd msg
+
+
 request : (Http.Error -> msg) -> (Model -> msg) -> Cmd msg
 request failHandler successHandler =
-    Task.perform failHandler successHandler (Http.get decoder endpoint)
+    let
+        result =
+            (\r ->
+                case r of
+                    Ok r ->
+                        successHandler r
+
+                    Err e ->
+                        failHandler e
+            )
+    in
+        Http.send result (Http.get endpoint decoder)

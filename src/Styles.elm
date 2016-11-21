@@ -15,24 +15,24 @@ css =
     (stylesheet << namespace CssCommon.namespace) <|
         List.concat
             [ [ html
-                [ boxSizing borderBox
-                ]
+                    [ boxSizing borderBox
+                    ]
               , everything
-                [ boxSizing inherit
-                , after
                     [ boxSizing inherit
+                    , after
+                        [ boxSizing inherit
+                        ]
+                    , before
+                        [ boxSizing inherit
+                        ]
                     ]
-                , before
-                    [ boxSizing inherit
-                    ]
-                ]
               , body
-                  [ padding (px 0)
-                  , margin (px 0)
-                  , backgroundColor Colors.background
-                  , color Colors.foreground
-                  , fontFamily monospace
-                  ]
+                    [ padding (px 0)
+                    , margin (px 0)
+                    , backgroundColor Colors.background
+                    , color Colors.foreground
+                    , fontFamily monospace
+                    ]
               ]
             , CssCommon.styles
             , Registers.styles

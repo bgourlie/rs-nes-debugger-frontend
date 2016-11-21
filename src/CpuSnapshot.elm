@@ -2,8 +2,7 @@ module CpuSnapshot exposing (decoder, Model)
 
 import Http
 import Task
-import Json.Decode exposing (Decoder, (:=))
-import Json.Decode as Json
+import Json.Decode as Json exposing (Decoder, field)
 import Registers exposing (Model)
 import Instruction
 
@@ -17,7 +16,7 @@ type alias Model =
 
 decoder : Decoder Model
 decoder =
-    Json.object3 Model
-        ("cycles" := Json.int)
-        ("registers" := Registers.decoder)
-        ("instructions" := (Json.list Instruction.decoder))
+    Json.map3 Model
+        (field "cycles" Json.int)
+        (field "registers" Registers.decoder)
+        (field "instructions" (Json.list Instruction.decoder))

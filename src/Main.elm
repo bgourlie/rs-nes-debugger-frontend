@@ -1,9 +1,9 @@
 port module Main exposing (..)
 
-import Html exposing (Html, Attribute, div, text, ul, li, button, header, input, svg)
-import Html.Attributes exposing (disabled, checked, type')
+import Html exposing (Html, Attribute, div, text, ul, li, button, header, input)
+import Svg exposing (svg)
+import Html.Attributes exposing (disabled, checked, type_)
 import Html.Events exposing (onClick)
-import Html.App as App
 import Set exposing (Set)
 import Http
 import Time exposing (Time, every)
@@ -26,18 +26,14 @@ import Colors
     CssCommon.helpers
 
 
-
---
-
-
 wsDebuggerEndpoint : String
 wsDebuggerEndpoint =
     "ws://localhost:9976"
 
 
-main : Program Never
+main : Program Never Model AppMessage
 main =
-    App.program
+    Html.program
         { init = init
         , view = view
         , update = update
@@ -250,6 +246,7 @@ handleDebuggerCommand model debuggerCommand =
             in
                 ( { newModel | instructions = snapshot.instructions, registers = snapshot.registers, cycles = snapshot.cycles }, cmd )
 
+
 handleBreakCondition : Model -> DebuggerCommand.BreakReason -> ( Model, Cmd AppMessage )
 handleBreakCondition model breakReason =
     case breakReason of
@@ -289,7 +286,7 @@ view model =
             [ Registers.view model.registers
             , div [ id DebuggerButtons ]
                 [ button [ onClick StepClick, disabled <| autoStepEnabled model ] [ text "Step" ]
-                , input [ type' "checkbox", checked <| autoStepEnabled model, onClick ToggleAutoStepClicked ] []
+                , input [ type_ "checkbox", checked <| autoStepEnabled model, onClick ToggleAutoStepClicked ] []
                 , button [ onClick ContinueClick ] [ text "Continue" ]
                 , button [ onClick ScrollInstructionIntoView ] [ text "Locate Current Instruction" ]
                 ]

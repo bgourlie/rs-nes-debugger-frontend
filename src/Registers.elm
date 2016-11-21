@@ -3,7 +3,7 @@ module Registers exposing (new, decoder, Model, view, styles)
 import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
 import Html.Attributes exposing (title)
 import Bitwise exposing (and)
-import Json.Decode as Json exposing (Decoder, (:=))
+import Json.Decode as Json exposing (Decoder, field)
 import Css exposing ((#))
 import Css.Elements
 import CssCommon
@@ -13,38 +13,34 @@ import CssCommon
     CssCommon.helpers
 
 
-
---
-
-
 getCarry : Model -> Bool
 getCarry model =
-    model.stat `and` 0x01 > 0
+    and model.stat 0x01 > 0
 
 
 getZero : Model -> Bool
 getZero model =
-    model.stat `and` 0x02 > 0
+    and model.stat 0x02 > 0
 
 
 getInterrupt : Model -> Bool
 getInterrupt model =
-    model.stat `and` 0x04 > 0
+    and model.stat 0x04 > 0
 
 
 getDecimal : Model -> Bool
 getDecimal model =
-    model.stat `and` 0x08 > 0
+    and model.stat 0x08 > 0
 
 
 getOverflow : Model -> Bool
 getOverflow model =
-    model.stat `and` 0x40 > 0
+    and model.stat 0x40 > 0
 
 
 getNegative : Model -> Bool
 getNegative model =
-    model.stat `and` 0x80 > 0
+    and model.stat 0x80 > 0
 
 
 type alias Model =
@@ -70,13 +66,13 @@ new =
 
 decoder : Decoder Model
 decoder =
-    Json.object6 Model
-        ("acc" := Json.int)
-        ("x" := Json.int)
-        ("y" := Json.int)
-        ("pc" := Json.int)
-        ("sp" := Json.int)
-        ("status" := Json.int)
+    Json.map6 Model
+        (field "acc" Json.int)
+        (field "x" Json.int)
+        (field "y" Json.int)
+        (field "pc" Json.int)
+        (field "sp" Json.int)
+        (field "status" Json.int)
 
 
 view : Model -> Html msg
