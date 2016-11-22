@@ -13,6 +13,7 @@ import ParseInt exposing (toHex)
 import CssCommon
 import DebuggerCommand exposing (DebuggerCommand(Break))
 import Instruction
+import CpuSnapshot
 import ToggleBreakpoint
 import Continue
 import Registers
@@ -253,13 +254,13 @@ handleDebuggerCommand model debuggerCommand =
         Break reason snapshot ->
             let
                 ( newModel, cmd ) =
-                    handleBreakCondition model reason
+                    handleBreakCondition model reason snapshot
             in
                 ( { newModel | instructions = snapshot.instructions, registers = snapshot.registers, cycles = snapshot.cycles }, cmd )
 
 
-handleBreakCondition : Model -> DebuggerCommand.BreakReason -> ( Model, Cmd AppMessage )
-handleBreakCondition model breakReason =
+handleBreakCondition : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.Model -> ( Model, Cmd AppMessage )
+handleBreakCondition model breakReason snapshot =
     case breakReason of
         DebuggerCommand.Breakpoint ->
             let
@@ -267,7 +268,7 @@ handleBreakCondition model breakReason =
                     handleStepInput AutoStepOff model
 
                 ( postMessageModel, postMessageCmd ) =
-                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Breakpoint hit @ 0x" ++ toHex model.registers.pc)
+                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Breakpoint hit @ 0x" ++ toHex snapshot.registers.pc)
             in
                 ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
 
@@ -278,7 +279,7 @@ handleBreakCondition model breakReason =
                     handleStepInput AutoStepOff model
 
                 ( postMessageModel, postMessageCmd ) =
-                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Trap detected @ 0x" ++ toHex model.registers.pc)
+                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
             in
                 ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
 
