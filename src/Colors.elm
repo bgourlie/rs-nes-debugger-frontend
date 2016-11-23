@@ -16,7 +16,7 @@ consoleBackground =
 
 
 currentLine =
-    hex "#323232"
+    hex "#2d6099"
 
 
 mnemonic =
