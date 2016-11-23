@@ -263,28 +263,26 @@ handleBreakCondition : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.Model
 handleBreakCondition model breakReason snapshot =
     case breakReason of
         DebuggerCommand.Breakpoint ->
-            let
-                ( postStepModel, postStepCmd ) =
-                    handleStepInput AutoStepOff model
-
-                ( postMessageModel, postMessageCmd ) =
-                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Breakpoint hit @ 0x" ++ toHex snapshot.registers.pc)
-            in
-                ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
+            breakWithMessage model breakReason snapshot ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc)
 
         DebuggerCommand.Trap ->
-            -- TODO: This branch in nearly identical to above.  DRY this up.
-            let
-                ( postStepModel, postStepCmd ) =
-                    handleStepInput AutoStepOff model
-
-                ( postMessageModel, postMessageCmd ) =
-                    Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
-            in
-                ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
+            breakWithMessage model breakReason snapshot ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
 
         _ ->
             ( model, Cmd.none )
+
+
+breakWithMessage : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.Model -> String -> ( Model, Cmd AppMessage )
+breakWithMessage model breakReason snapshot message =
+    -- TODO: This is a poorly named method -- It also turns off auto-step
+    let
+        ( postStepModel, postStepCmd ) =
+            handleStepInput AutoStepOff model
+
+        ( postMessageModel, postMessageCmd ) =
+            Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed message
+    in
+        ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
 
 
 subscriptions : Model -> Sub AppMessage
