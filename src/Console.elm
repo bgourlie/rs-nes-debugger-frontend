@@ -96,7 +96,8 @@ styles =
         , Css.marginLeft (Css.em 0.5)
         , Css.padding2 (Css.em 0.075) (Css.em 0.25)
         , Css.backgroundColor Colors.messageRepeatBackgroundColor
-        , Css.borderRadius (Css.px 3)
+        , Css.borderRadius (Css.pct 50)
+        , Css.fontSize (Css.pct 80)
         , Css.property "visibility" "hidden"
         ]
     , (.) MessageRepeatsShow
