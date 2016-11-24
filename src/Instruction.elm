@@ -1,4 +1,4 @@
-module Instruction exposing (view, styles, decoder, Model, CssIds(CurrentInstruction))
+module Instruction exposing (view, styles, decoder, Instruction, CssIds(CurrentInstruction))
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
@@ -12,6 +12,8 @@ import Css exposing ((#), (.))
 import Css.Elements as CssElem
 import CssCommon
 import Registers
+import Byte
+import Breakpoints
 import Colors
 
 
@@ -19,42 +21,64 @@ import Colors
     CssCommon.helpers
 
 
-type alias Model =
+type alias Instruction =
     { mnemonic : String
     , operand : String
     , offset : Int
     }
 
 
-decoder : Decoder Model
+type alias Model a =
+    { a
+        | instructions : List Instruction
+        , registers : Registers.Registers
+        , breakpoints : Breakpoints.Breakpoints
+        , byteDisplay : Byte.Display
+    }
+
+
+decoder : Decoder Instruction
 decoder =
-    Json.map3 Model
+    Json.map3 Instruction
         (field "mnemonic" Json.string)
         (field "operand" Json.string)
         (field "offset" Json.int)
 
 
-view : (Int -> msg) -> Set Int -> Int -> List Model -> Html msg
-view breakpointClickHandler breakpoints pc instructions =
-    Html.table [ id Instructions ]
-        (map
-            (\instruction ->
-                Html.tr (currentInstructionAttrs instruction.offset pc)
-                    [ Html.td [ class [ Gutter ] ]
-                        [ Html.div [ class [ MemoryLocation ] ] [ Html.text <| "0x" ++ toHex instruction.offset ]
-                        , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
-                            [ breakpointCircle
+view : (Int -> msg) -> Model a -> Html msg
+view breakpointClickHandler model =
+    let
+        pc =
+            model.registers.pc
+
+        instructions =
+            model.instructions
+
+        breakpoints =
+            model.breakpoints
+
+        byteDisplay =
+            model.byteDisplay
+    in
+        Html.table [ id Instructions ]
+            (map
+                (\instruction ->
+                    Html.tr (currentInstructionAttrs instruction.offset pc)
+                        [ Html.td [ class [ Gutter ] ]
+                            [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteDisplay instruction.offset ]
+                            , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
+                                [ breakpointCircle
+                                ]
+                            ]
+                        , Html.td []
+                            [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
+                            , Html.span [] [ Html.text " " ]
+                            , Html.span [ class [ Operand ] ] [ Html.text instruction.operand ]
                             ]
                         ]
-                    , Html.td []
-                        [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
-                        , Html.span [] [ Html.text " " ]
-                        , Html.span [ class [ Operand ] ] [ Html.text instruction.operand ]
-                        ]
-                    ]
+                )
+                instructions
             )
-            instructions
-        )
 
 
 type CssIds
@@ -93,7 +117,7 @@ styles =
         , Css.height (Css.pct 100)
         , Css.width (Css.pct 100)
         , Css.children
-            [ (#) CurrentInstruction
+            [ (.) CurrentInstruction
                 [ Css.backgroundColor Colors.currentLine
                 ]
             ]
@@ -127,7 +151,7 @@ styles =
 
 currentInstructionAttrs address pc =
     if address == pc then
-        [ id CurrentInstruction ]
+        [ class [ CurrentInstruction ] ]
     else
         []
 

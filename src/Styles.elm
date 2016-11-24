@@ -7,6 +7,7 @@ import Main
 import Registers
 import Instruction
 import Console
+import Byte
 import CssCommon
 import Colors
 
@@ -40,4 +41,5 @@ css =
             , Registers.styles
             , Instruction.styles
             , Console.styles
+            , Byte.styles
             ]

@@ -3,14 +3,14 @@ module CpuSnapshot exposing (decoder, Model)
 import Http
 import Task
 import Json.Decode as Json exposing (Decoder, field)
-import Registers exposing (Model)
+import Registers exposing (Registers)
 import Instruction
 
 
 type alias Model =
     { cycles : Int
-    , registers : Registers.Model
-    , instructions : List Instruction.Model
+    , registers : Registers.Registers
+    , instructions : List Instruction.Instruction
     }
 
 

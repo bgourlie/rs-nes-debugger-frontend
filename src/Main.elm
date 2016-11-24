@@ -1,7 +1,7 @@
 port module Main exposing (..)
 
-import Html exposing (Html, Attribute, div, text, ul, li, button, header, input)
-import Html.Attributes exposing (disabled, checked, type_)
+import Html exposing (Html, Attribute, div, text, ul, li, button, header, input, fieldset)
+import Html.Attributes exposing (disabled, checked, type_, name)
 import Html.Events exposing (onClick)
 import Dom
 import Set exposing (Set)
@@ -20,9 +20,8 @@ import Registers
 import Step
 import Console
 import Colors
-
-
--- TODO Add a local addMessage method to DRY things up
+import Byte
+import Breakpoints
 
 
 { id, class, classList } =
@@ -54,10 +53,11 @@ port scrollElementIntoView : String -> Cmd msg
 type alias Model =
     { messages : List ( String, Int )
     , cycles : Int
-    , instructions : List Instruction.Model
-    , registers : Registers.Model
+    , instructions : List Instruction.Instruction
+    , registers : Registers.Registers
     , stepState : StepState
     , breakpoints : Set Int
+    , byteDisplay : Byte.Display
     }
 
 
@@ -85,6 +85,7 @@ init =
             , registers = Registers.new
             , stepState = Off
             , breakpoints = Set.empty
+            , byteDisplay = Byte.Dec
             }
     in
         ( model, Cmd.none )
@@ -110,6 +111,7 @@ type AppMessage
     | ScrollInstructionIntoView
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
+    | UpdateByteDisplay Byte.Display
     | NoOp
 
 
@@ -143,7 +145,7 @@ update msg model =
                 ( newModel, cmd ) =
                     Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Breakpoint " ++ verb ++ " @ 0x" ++ toHex resp.offset)
             in
-                ( { newModel | breakpoints = (updateBreakpoints model.breakpoints resp) }, cmd )
+                ( { newModel | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, cmd )
 
         ToggleBreakpointRequestFail err ->
             let
@@ -187,16 +189,11 @@ update msg model =
         ScrollConsoleFail _ ->
             ( model, Cmd.none )
 
+        UpdateByteDisplay byteDisplay ->
+            ( { model | byteDisplay = byteDisplay }, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
-
-
-updateBreakpoints : Set Int -> ToggleBreakpoint.Model -> Set Int
-updateBreakpoints breakpoints toggleBreakpointResponse =
-    if toggleBreakpointResponse.isSet then
-        Set.insert toggleBreakpointResponse.offset breakpoints
-    else
-        Set.remove toggleBreakpointResponse.offset breakpoints
 
 
 stepStateTransition : StepState -> StepInput -> StepState
@@ -307,11 +304,12 @@ view model =
                 , button [ onClick ContinueClick ] [ text "Continue" ]
                 , button [ onClick ScrollInstructionIntoView ] [ text "Locate Current Instruction" ]
                 ]
+            , Byte.toggleDisplayView UpdateByteDisplay model
             , div [] [ text <| "Cycles: " ++ toString model.cycles ]
             ]
         , div [ id TwoColumn ]
             [ div [ id InstructionsViewContainer ]
-                [ Instruction.view (\address -> ToggleBreakpointClick address) model.breakpoints model.registers.pc model.instructions
+                [ Instruction.view (\address -> ToggleBreakpointClick address) model
                 ]
             , div [ id ConsoleContainer ]
                 [ Console.view model

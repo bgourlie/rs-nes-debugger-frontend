@@ -1,4 +1,4 @@
-module Registers exposing (new, decoder, Model, view, styles)
+module Registers exposing (new, decoder, Registers, view, styles)
 
 import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
 import Html.Attributes exposing (title)
@@ -13,37 +13,37 @@ import CssCommon
     CssCommon.helpers
 
 
-getCarry : Model -> Bool
+getCarry : Registers -> Bool
 getCarry model =
     and model.stat 0x01 > 0
 
 
-getZero : Model -> Bool
+getZero : Registers -> Bool
 getZero model =
     and model.stat 0x02 > 0
 
 
-getInterrupt : Model -> Bool
+getInterrupt : Registers -> Bool
 getInterrupt model =
     and model.stat 0x04 > 0
 
 
-getDecimal : Model -> Bool
+getDecimal : Registers -> Bool
 getDecimal model =
     and model.stat 0x08 > 0
 
 
-getOverflow : Model -> Bool
+getOverflow : Registers -> Bool
 getOverflow model =
     and model.stat 0x40 > 0
 
 
-getNegative : Model -> Bool
+getNegative : Registers -> Bool
 getNegative model =
     and model.stat 0x80 > 0
 
 
-type alias Model =
+type alias Registers =
     { acc : Int
     , x : Int
     , y : Int
@@ -53,7 +53,7 @@ type alias Model =
     }
 
 
-new : Model
+new : Registers
 new =
     { acc = 0
     , x = 0
@@ -64,9 +64,9 @@ new =
     }
 
 
-decoder : Decoder Model
+decoder : Decoder Registers
 decoder =
-    Json.map6 Model
+    Json.map6 Registers
         (field "acc" Json.int)
         (field "x" Json.int)
         (field "y" Json.int)
@@ -75,9 +75,9 @@ decoder =
         (field "status" Json.int)
 
 
-view : Model -> Html msg
+view : Registers -> Html msg
 view model =
-    div [ id Registers ]
+    div [ id RegistersId ]
         [ table []
             [ tr []
                 [ th [ title "Program Counter" ] [ text "PC" ]
@@ -116,7 +116,7 @@ view model =
 
 
 type CssIds
-    = Registers
+    = RegistersId
 
 
 flagDisplay : Bool -> String
@@ -128,9 +128,8 @@ flagDisplay val =
 
 
 styles =
-    [ (#) Registers
-        [ Css.fontFamilies [ "monospace" ]
-        , Css.children
+    [ (#) RegistersId
+        [ Css.children
             [ Css.Elements.table
                 [ Css.display Css.inlineBlock
                 ]
