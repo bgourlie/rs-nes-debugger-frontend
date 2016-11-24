@@ -6,8 +6,8 @@ const Elm = require('./src/Main');
 
 const app = Elm.Main.fullscreen();
 
-app.ports.scrollElementIntoView.subscribe(function(id) {
-    const elem = document.getElementById(id);
+app.ports.scrollElementIntoView.subscribe(function(cls) {
+    const elem = document.getElementsByClassName(cls)[0];
     if(elem) {
         elem.scrollIntoView();
     }
