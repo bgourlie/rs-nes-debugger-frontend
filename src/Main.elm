@@ -297,7 +297,7 @@ view : Model -> Html AppMessage
 view model =
     div [ id Container ]
         [ header []
-            [ Registers.view model.registers
+            [ Registers.view model
             , div [ id DebuggerButtons ]
                 [ button [ onClick StepClick, disabled <| autoStepEnabled model ] [ text "Step" ]
                 , input [ type_ "checkbox", checked <| autoStepEnabled model, onClick ToggleAutoStepClicked ] []
