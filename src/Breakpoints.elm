@@ -1,4 +1,4 @@
-module Breakpoints exposing (toggle, Breakpoints)
+module Breakpoints exposing (toggle, isSet, Breakpoints)
 
 import Set exposing (Set)
 
@@ -17,3 +17,8 @@ toggle model isSet offset =
         Set.insert offset model.breakpoints
     else
         Set.remove offset model.breakpoints
+
+
+isSet : Breakpoints -> Int -> Bool
+isSet breakpoints offset =
+    Set.member offset breakpoints

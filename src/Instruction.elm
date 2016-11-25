@@ -3,7 +3,6 @@ module Instruction exposing (view, styles, decoder, Instruction, CssIds(CurrentI
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
 import List exposing (map, map2)
-import Set exposing (Set)
 import Svg exposing (svg)
 import Svg.Attributes
 import Json.Decode as Json exposing (Decoder, field)
@@ -157,7 +156,7 @@ currentInstructionAttrs address pc =
 
 
 breakpointClass breakpoints offset =
-    if Set.member offset breakpoints then
+    if Breakpoints.isSet breakpoints offset then
         class [ BreakpointHitBox, BreakpointOn ]
     else
         class [ BreakpointHitBox ]
