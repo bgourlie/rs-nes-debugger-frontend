@@ -13,6 +13,7 @@ import CssCommon
 import Registers
 import Byte
 import Breakpoints
+import AddressingMode
 import Colors
 
 
@@ -22,7 +23,7 @@ import Colors
 
 type alias Instruction =
     { mnemonic : String
-    , operand : String
+    , addressingMode : AddressingMode.AddressingMode
     , offset : Int
     }
 
@@ -40,7 +41,7 @@ decoder : Decoder Instruction
 decoder =
     Json.map3 Instruction
         (field "mnemonic" Json.string)
-        (field "operand" Json.string)
+        (field "addressing_mode" AddressingMode.decoder)
         (field "offset" Json.int)
 
 
@@ -72,7 +73,7 @@ view breakpointClickHandler model =
                         , Html.td []
                             [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
                             , Html.span [] [ Html.text " " ]
-                            , Html.span [ class [ Operand ] ] [ Html.text instruction.operand ]
+                            , Html.span [ class [ Operand ] ] [ AddressingMode.view byteDisplay instruction.addressingMode ]
                             ]
                         ]
                 )
