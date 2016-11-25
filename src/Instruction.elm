@@ -98,12 +98,12 @@ type CssClasses
 breakpointCircle : Html.Html msg
 breakpointCircle =
     svg
-        [ Svg.Attributes.width "1.2em", Svg.Attributes.height "1.2em" ]
+        [ Svg.Attributes.width "1.6ch", Svg.Attributes.height "1.6ch" ]
         [ Svg.circle
-            [ Svg.Attributes.fill "#FF6666"
-            , Svg.Attributes.cx "0.6em"
-            , Svg.Attributes.cy "0.6em"
-            , Svg.Attributes.r "0.6em"
+            [ Svg.Attributes.fill Colors.breakpointColor
+            , Svg.Attributes.cx "0.8ch"
+            , Svg.Attributes.cy "0.8ch"
+            , Svg.Attributes.r "0.8ch"
             ]
             []
         ]
