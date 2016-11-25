@@ -14,6 +14,7 @@ import Registers
 import Byte
 import Breakpoints
 import AddressingMode
+import Icons
 import Colors
 
 
@@ -67,7 +68,7 @@ view breakpointClickHandler model =
                         [ Html.td [ class [ Gutter ] ]
                             [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteDisplay instruction.offset ]
                             , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
-                                [ breakpointCircle
+                                [ Icons.breakpointCircle
                                 ]
                             ]
                         , Html.td []
@@ -93,20 +94,6 @@ type CssClasses
     | MemoryLocation
     | Mnemonic
     | Operand
-
-
-breakpointCircle : Html.Html msg
-breakpointCircle =
-    svg
-        [ Svg.Attributes.width "1.6ch", Svg.Attributes.height "1.6ch" ]
-        [ Svg.circle
-            [ Svg.Attributes.fill Colors.breakpointColor
-            , Svg.Attributes.cx "0.8ch"
-            , Svg.Attributes.cy "0.8ch"
-            , Svg.Attributes.r "0.8ch"
-            ]
-            []
-        ]
 
 
 styles =
