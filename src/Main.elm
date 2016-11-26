@@ -378,6 +378,13 @@ styles =
         , Css.backgroundColor Colors.consoleBackground
         ]
     , (#) DebuggerButtons
-        [ Css.verticalAlign Css.top
+        [ Css.children
+            [ Css.everything
+                [ Css.marginLeft (Css.px 5)
+                , Css.first
+                    [ Css.marginLeft (Css.px 0)
+                    ]
+                ]
+            ]
         ]
     ]

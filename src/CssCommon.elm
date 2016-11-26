@@ -45,9 +45,10 @@ styles =
         , Css.padding Css.zero
         , Css.border3 (Css.px 1) Css.solid Css.transparent
         , Css.borderRadius (Css.px 5)
-        , Css.padding2 (Css.em 0.15) (Css.em 0.25)
+        , Css.padding (Css.em 0.1)
         , Css.backgroundColor Css.transparent
         , Css.outline Css.none
+        , Css.verticalAlign Css.top
         , Css.hover
             [ Css.borderColor (Css.hex Colors.buttonBorderColor)
             ]

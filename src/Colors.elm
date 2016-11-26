@@ -65,3 +65,7 @@ toggleButtonColor =
 
 buttonBorderColor =
     "#808080"
+
+
+debuggerIconColor =
+    "#9FD6AE"
