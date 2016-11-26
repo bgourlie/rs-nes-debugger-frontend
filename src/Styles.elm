@@ -8,6 +8,7 @@ import Registers
 import Instruction
 import Console
 import Byte
+import Icons
 import CssCommon
 import Colors
 

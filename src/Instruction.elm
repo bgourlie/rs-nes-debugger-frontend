@@ -68,7 +68,7 @@ view breakpointClickHandler model =
                         [ Html.td [ class [ Gutter ] ]
                             [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteDisplay instruction.offset ]
                             , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
-                                [ Icons.breakpointCircle
+                                [ Icons.breakpoint
                                 ]
                             ]
                         , Html.td []

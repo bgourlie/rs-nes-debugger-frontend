@@ -1,7 +1,7 @@
 port module Main exposing (..)
 
 import Html exposing (Html, Attribute, div, text, ul, li, button, header, input, fieldset)
-import Html.Attributes exposing (disabled, checked, type_, name)
+import Html.Attributes exposing (disabled, checked, type_, title)
 import Html.Events exposing (onClick)
 import Dom
 import Set exposing (Set)
@@ -22,6 +22,7 @@ import Console
 import Colors
 import Byte
 import Breakpoints
+import Icons
 
 
 { id, class, classList } =
@@ -85,7 +86,7 @@ init =
             , registers = Registers.new
             , stepState = Off
             , breakpoints = Set.empty
-            , byteDisplay = Byte.Dec
+            , byteDisplay = Byte.Hex
             }
     in
         ( model, Cmd.none )
@@ -299,10 +300,10 @@ view model =
         [ header []
             [ Registers.view model
             , div [ id DebuggerButtons ]
-                [ button [ onClick StepClick, disabled <| autoStepEnabled model ] [ text "Step" ]
+                [ button [ class [ CssCommon.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
+                , button [ class [ CssCommon.Button ], onClick StepClick, disabled <| autoStepEnabled model, title "Step" ] [ Icons.step ]
+                , button [ class [ CssCommon.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
                 , input [ type_ "checkbox", checked <| autoStepEnabled model, onClick ToggleAutoStepClicked ] []
-                , button [ onClick ContinueClick ] [ text "Continue" ]
-                , button [ onClick ScrollInstructionIntoView ] [ text "Locate Current Instruction" ]
                 ]
             , Byte.toggleDisplayView UpdateByteDisplay model
             , div [] [ text <| "Cycles: " ++ toString model.cycles ]
@@ -371,5 +372,8 @@ styles =
         [ Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
         , Css.overflowY Css.auto
         , Css.backgroundColor Colors.consoleBackground
+        ]
+    , (#) DebuggerButtons
+        [ Css.verticalAlign Css.top
         ]
     ]

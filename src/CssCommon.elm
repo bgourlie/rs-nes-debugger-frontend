@@ -1,4 +1,4 @@
-module CssCommon exposing (namespace, helpers, styles, CommonStyles(List, InlineList))
+module CssCommon exposing (namespace, helpers, styles, CommonStyles(List, InlineList, Button))
 
 import Css exposing (..)
 import Css.Elements
@@ -16,6 +16,7 @@ helpers =
 type CommonStyles
     = List
     | InlineList
+    | Button
 
 
 styles =
@@ -36,6 +37,19 @@ styles =
                     [ paddingLeft (px 0)
                     ]
                 ]
+            ]
+        ]
+    , (.) Button
+        [ Css.position Css.relative
+        , Css.padding Css.zero
+        , Css.border3 (Css.px 1) Css.solid Css.transparent
+        , Css.borderRadius (Css.px 5)
+        , Css.padding2 (Css.em 0.15) (Css.em 0.25)
+        , Css.color (Css.hex "#ffffff")
+        , Css.backgroundColor Css.transparent
+        , Css.outline Css.none
+        , Css.hover
+            [ Css.borderColor (Css.hex "#eeeeee")
             ]
         ]
     ]
