@@ -76,9 +76,10 @@ isSelected display model =
 styles : List Css.Snippet
 styles =
     [ (#) ByteDisplayToggle
-        [ Css.children
+        [ Css.verticalAlign Css.top
+        , Css.children
             [ Css.Elements.label
-                [ Css.display Css.block
+                [ Css.marginLeft (Css.px 10)
                 ]
             ]
         ]

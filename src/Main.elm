@@ -354,7 +354,7 @@ styles =
                 , Css.children
                     [ Css.Elements.div
                         [ Css.display Css.inlineBlock
-                        , Css.marginLeft (Css.px 5)
+                        , Css.marginLeft (Css.px 10)
                         , Css.firstChild
                             [ Css.marginLeft (Css.px 0)
                             ]
