@@ -57,6 +57,7 @@ type alias Registers =
 type alias Model a =
     { a
         | registers : Registers
+        , cycles : Int
         , byteDisplay : Byte.Display
     }
 
@@ -91,6 +92,9 @@ view model =
 
         display =
             model.byteDisplay
+
+        cycles =
+            model.cycles
     in
         div [ id RegistersElement ]
             [ table [ id RegistersTable ]
@@ -127,6 +131,14 @@ view model =
                     , td [] [ text <| flagDisplay (getNegative registers) ]
                     ]
                 ]
+            , table [ id CyclesTable ]
+                [ tr []
+                    [ th [] [ text "Cycles" ]
+                    ]
+                , tr []
+                    [ td [] [ text <| toString cycles ]
+                    ]
+                ]
             ]
 
 
@@ -134,6 +146,7 @@ type CssIds
     = RegistersElement
     | RegistersTable
     | StatusTable
+    | CyclesTable
 
 
 flagDisplay : Bool -> String
@@ -159,6 +172,14 @@ styles =
                 ]
             , Css.Elements.td
                 [ Css.textAlign Css.center
+                ]
+            ]
+        ]
+    , (#) CyclesTable
+        [ Css.textAlign Css.center
+        , Css.descendants
+            [ Css.Elements.th
+                [ Css.width (Css.ch 10)
                 ]
             ]
         ]

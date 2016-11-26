@@ -23,6 +23,7 @@ import Colors
 import Byte
 import Breakpoints
 import Icons
+import Toggle
 
 
 { id, class, classList } =
@@ -303,10 +304,9 @@ view model =
                 [ button [ class [ CssCommon.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
                 , button [ class [ CssCommon.Button ], onClick StepClick, disabled <| autoStepEnabled model, title "Step" ] [ Icons.step ]
                 , button [ class [ CssCommon.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
-                , input [ type_ "checkbox", checked <| autoStepEnabled model, onClick ToggleAutoStepClicked ] []
+                , Toggle.view ToggleAutoStepClicked "autoStepToggle" "Autostep" (autoStepEnabled model)
                 ]
             , Byte.toggleDisplayView UpdateByteDisplay model
-            , div [] [ text <| "Cycles: " ++ toString model.cycles ]
             ]
         , div [ id TwoColumn ]
             [ div [ id InstructionsViewContainer ]
@@ -354,6 +354,10 @@ styles =
                 , Css.children
                     [ Css.Elements.div
                         [ Css.display Css.inlineBlock
+                        , Css.marginLeft (Css.px 5)
+                        , Css.firstChild
+                            [ Css.marginLeft (Css.px 0)
+                            ]
                         ]
                     ]
                 ]

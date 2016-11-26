@@ -9,6 +9,7 @@ import Instruction
 import Console
 import Byte
 import Icons
+import Toggle
 import CssCommon
 import Colors
 
@@ -43,4 +44,5 @@ css =
             , Instruction.styles
             , Console.styles
             , Byte.styles
+            , Toggle.styles
             ]

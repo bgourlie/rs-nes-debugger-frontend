@@ -49,3 +49,19 @@ messageRepeatBackgroundColor =
 
 breakpointColor =
     "#FF6666"
+
+
+toggleOffBackgroundColor =
+    "#808080"
+
+
+toggleOnBackgroundColor =
+    "#9FD6AE"
+
+
+toggleButtonColor =
+    "#ffffff"
+
+
+buttonBorderColor =
+    "#808080"

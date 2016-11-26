@@ -3,6 +3,7 @@ module CssCommon exposing (namespace, helpers, styles, CommonStyles(List, Inline
 import Css exposing (..)
 import Css.Elements
 import Html.CssHelpers
+import Colors
 
 
 namespace =
@@ -45,11 +46,12 @@ styles =
         , Css.border3 (Css.px 1) Css.solid Css.transparent
         , Css.borderRadius (Css.px 5)
         , Css.padding2 (Css.em 0.15) (Css.em 0.25)
-        , Css.color (Css.hex "#ffffff")
         , Css.backgroundColor Css.transparent
         , Css.outline Css.none
         , Css.hover
-            [ Css.borderColor (Css.hex "#eeeeee")
+            [ Css.borderColor (Css.hex Colors.buttonBorderColor)
             ]
+        , Css.property "transition" "all .2s ease"
+        , Css.cursor Css.pointer
         ]
     ]
