@@ -103,7 +103,7 @@ view model =
                 , th [ title "Accumulator" ] [ text "ACC" ]
                 , th [ title "Index (X)" ] [ text "X" ]
                 , th [ title "Index (Y)" ] [ text "Y" ]
-                , th [ colspan 7 ] [ text "Status" ]
+                , th [ colspan 6 ] [ text "Status" ]
                 , th [] [ text "Cycles" ]
                 ]
             , tr []
@@ -146,9 +146,5 @@ styles =
                 [ Css.textAlign Css.center
                 ]
             ]
-        ]
-    , (#) Cycles
-        [ Css.textAlign Css.center
-        , Css.width (Css.ch 10)
         ]
     ]
