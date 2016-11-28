@@ -172,8 +172,11 @@ update msg model =
             let
                 ( handleStepModel, handleStepCmd ) =
                     handleStepInput AutoStepOff model
+
+                ( newModel, addMessageCmd ) =
+                    Console.addMessage handleStepModel ScrollConsoleFail ScrollConsoleSucceed ("Execution Continued...")
             in
-                ( handleStepModel, Cmd.batch [ handleStepCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
+                ( newModel, Cmd.batch [ handleStepCmd, addMessageCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
 
         ContinueRequestSuccess resp ->
             ( model, Cmd.none )
