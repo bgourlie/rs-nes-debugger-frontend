@@ -1,7 +1,7 @@
 module Registers exposing (new, decoder, Registers, view, styles)
 
 import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
-import Html.Attributes exposing (title)
+import Html.Attributes exposing (title, colspan)
 import Bitwise exposing (and)
 import Json.Decode as Json exposing (Decoder, field)
 import Css exposing ((#))
@@ -96,57 +96,36 @@ view model =
         cycles =
             model.cycles
     in
-        div [ id RegistersElement ]
-            [ table [ id RegistersTable ]
-                [ tr []
-                    [ th [ title "Program Counter" ] [ text "PC" ]
-                    , th [ title "Stack Pointer" ] [ text "SP" ]
-                    , th [ title "Accumulator" ] [ text "ACC" ]
-                    , th [ title "Index (X)" ] [ text "X" ]
-                    , th [ title "Index (Y)" ] [ text "Y" ]
-                    ]
-                , tr []
-                    [ td [] [ Byte.view display registers.pc ]
-                    , td [] [ Byte.view display registers.sp ]
-                    , td [] [ Byte.view display registers.acc ]
-                    , td [] [ Byte.view display registers.x ]
-                    , td [] [ Byte.view display registers.y ]
-                    ]
+        table [ id RegistersTable ]
+            [ tr []
+                [ th [ title "Program Counter" ] [ text "PC" ]
+                , th [ title "Stack Pointer" ] [ text "SP" ]
+                , th [ title "Accumulator" ] [ text "ACC" ]
+                , th [ title "Index (X)" ] [ text "X" ]
+                , th [ title "Index (Y)" ] [ text "Y" ]
+                , th [ colspan 7 ] [ text "Status" ]
+                , th [] [ text "Cycles" ]
                 ]
-            , table [ id StatusTable ]
-                [ tr []
-                    [ th [ title "Carry Flag" ] [ text "C" ]
-                    , th [ title "Zero Flag" ] [ text "Z" ]
-                    , th [ title "Interrupt flag" ] [ text "I" ]
-                    , th [ title "Decimal flag" ] [ text "D" ]
-                    , th [ title "Overflow flag" ] [ text "V " ]
-                    , th [ title "Sign flag" ] [ text "S" ]
-                    ]
-                , tr []
-                    [ td [] [ text <| flagDisplay (getCarry registers) ]
-                    , td [] [ text <| flagDisplay (getZero registers) ]
-                    , td [] [ text <| flagDisplay (getInterrupt registers) ]
-                    , td [] [ text <| flagDisplay (getDecimal registers) ]
-                    , td [] [ text <| flagDisplay (getOverflow registers) ]
-                    , td [] [ text <| flagDisplay (getNegative registers) ]
-                    ]
-                ]
-            , table [ id CyclesTable ]
-                [ tr []
-                    [ th [] [ text "Cycles" ]
-                    ]
-                , tr []
-                    [ td [] [ text <| toString cycles ]
-                    ]
+            , tr []
+                [ td [] [ Byte.view display registers.pc ]
+                , td [] [ Byte.view display registers.sp ]
+                , td [] [ Byte.view display registers.acc ]
+                , td [] [ Byte.view display registers.x ]
+                , td [] [ Byte.view display registers.y ]
+                , td [ title "Carry Flag" ] [ text <| "C" ++ flagDisplay (getCarry registers) ]
+                , td [ title "Zero Flag" ] [ text <| "Z" ++ flagDisplay (getZero registers) ]
+                , td [ title "Interrupt Flag" ] [ text <| "I" ++ flagDisplay (getInterrupt registers) ]
+                , td [ title "Decimal Flag" ] [ text <| "D" ++ flagDisplay (getDecimal registers) ]
+                , td [ title "Overflow Flag" ] [ text <| "V" ++ flagDisplay (getOverflow registers) ]
+                , td [ title "Sign Flag" ] [ text <| "S" ++ flagDisplay (getNegative registers) ]
+                , td [] [ text <| toString cycles ]
                 ]
             ]
 
 
 type CssIds
-    = RegistersElement
-    | RegistersTable
-    | StatusTable
-    | CyclesTable
+    = RegistersTable
+    | Cycles
 
 
 flagDisplay : Bool -> String
@@ -158,14 +137,7 @@ flagDisplay val =
 
 
 styles =
-    [ (#) RegistersElement
-        [ Css.children
-            [ Css.Elements.table
-                [ Css.display Css.inlineBlock
-                ]
-            ]
-        ]
-    , (#) RegistersTable
+    [ (#) RegistersTable
         [ Css.descendants
             [ Css.Elements.th
                 [ Css.width (Css.ch 6)
@@ -175,12 +147,8 @@ styles =
                 ]
             ]
         ]
-    , (#) CyclesTable
+    , (#) Cycles
         [ Css.textAlign Css.center
-        , Css.descendants
-            [ Css.Elements.th
-                [ Css.width (Css.ch 10)
-                ]
-            ]
+        , Css.width (Css.ch 10)
         ]
     ]

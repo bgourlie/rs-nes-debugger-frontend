@@ -26,7 +26,7 @@ bytesPerRow =
 
 
 windowSize =
-    4096
+    2048
 
 
 startOffset =

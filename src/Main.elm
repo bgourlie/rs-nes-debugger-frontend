@@ -369,7 +369,7 @@ styles =
                 , Css.padding (Css.px 5)
                 , Css.boxShadow5 (Css.px 0) (Css.px 2) (Css.px 2) (Css.px -2) (Css.rgba 0 0 0 0.4)
                 , Css.children
-                    [ Css.Elements.div
+                    [ Css.everything
                         [ Css.display Css.inlineBlock
                         , Css.marginLeft (Css.px 10)
                         , Css.firstChild
