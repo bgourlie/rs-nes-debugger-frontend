@@ -69,3 +69,7 @@ buttonBorderColor =
 
 debuggerIconColor =
     "#9FD6AE"
+
+
+hexEditorOffsetColor =
+    hex "#606366"

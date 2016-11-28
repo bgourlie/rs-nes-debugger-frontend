@@ -11,12 +11,14 @@ type alias Model =
     { cycles : Int
     , registers : Registers.Registers
     , instructions : List Instruction.Instruction
+    , memory : List Int
     }
 
 
 decoder : Decoder Model
 decoder =
-    Json.map3 Model
+    Json.map4 Model
         (field "cycles" Json.int)
         (field "registers" Registers.decoder)
         (field "instructions" (Json.list Instruction.decoder))
+        (field "memory" (Json.list Json.int))

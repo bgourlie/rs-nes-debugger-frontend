@@ -24,6 +24,7 @@ import Byte
 import Breakpoints
 import Icons
 import Toggle
+import HexEditor
 
 
 { id, class, classList } =
@@ -56,6 +57,7 @@ type alias Model =
     { messages : List ( String, Int )
     , cycles : Int
     , instructions : List Instruction.Instruction
+    , memory : List Int
     , registers : Registers.Registers
     , stepState : StepState
     , breakpoints : Set Int
@@ -84,6 +86,7 @@ init =
             { messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
             , instructions = []
+            , memory = []
             , registers = Registers.new
             , stepState = Off
             , breakpoints = Set.empty
@@ -255,7 +258,14 @@ handleDebuggerCommand model debuggerCommand =
                 ( newModel, cmd ) =
                     handleBreakCondition model reason snapshot
             in
-                ( { newModel | instructions = snapshot.instructions, registers = snapshot.registers, cycles = snapshot.cycles }, cmd )
+                ( { newModel
+                    | instructions = snapshot.instructions
+                    , registers = snapshot.registers
+                    , cycles = snapshot.cycles
+                    , memory = HexEditor.unpackAll snapshot.memory
+                  }
+                , cmd
+                )
 
 
 handleBreakCondition : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.Model -> ( Model, Cmd AppMessage )
@@ -309,11 +319,16 @@ view model =
             , Byte.toggleDisplayView UpdateByteDisplay model
             ]
         , div [ id TwoColumn ]
-            [ div [ id InstructionsViewContainer ]
+            [ div [ id InstructionsContainer ]
                 [ Instruction.view (\address -> ToggleBreakpointClick address) model
                 ]
-            , div [ id ConsoleContainer ]
-                [ Console.view model
+            , div [ id RightColumn ]
+                [ div [ id ConsoleContainer ]
+                    [ Console.view model
+                    ]
+                , div [ id HexEditorContainer ]
+                    [ HexEditor.view model
+                    ]
                 ]
             ]
         ]
@@ -333,8 +348,10 @@ type CssIds
     = Container
     | TwoColumn
     | DebuggerButtons
-    | InstructionsViewContainer
+    | InstructionsContainer
     | ConsoleContainer
+    | HexEditorContainer
+    | RightColumn
 
 
 styles : List Css.Snippet
@@ -368,14 +385,27 @@ styles =
         , Css.flexDirection Css.row
         , Css.property "flex" "1 1 auto"
         ]
-    , (#) InstructionsViewContainer
+    , (#) InstructionsContainer
         [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
         , Css.overflowY Css.auto
         ]
+    , (#) RightColumn
+        [ Css.displayFlex
+        , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
+        , Css.flexDirection Css.column
+        , Css.overflow Css.auto
+        ]
     , (#) ConsoleContainer
-        [ Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
-        , Css.overflowY Css.auto
+        [ Css.overflowY Css.auto
         , Css.backgroundColor Colors.consoleBackground
+        , Css.displayFlex
+        , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
+        ]
+    , (#) HexEditorContainer
+        [ Css.displayFlex
+        , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
+        , Css.overflowY Css.auto
+        , Css.position Css.relative
         ]
     , (#) DebuggerButtons
         [ Css.children

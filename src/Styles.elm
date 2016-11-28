@@ -10,6 +10,7 @@ import Console
 import Byte
 import Icons
 import Toggle
+import HexEditor
 import CssCommon
 import Colors
 
@@ -45,4 +46,5 @@ css =
             , Console.styles
             , Byte.styles
             , Toggle.styles
+            , HexEditor.styles
             ]
