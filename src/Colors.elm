@@ -73,3 +73,11 @@ debuggerIconColor =
 
 hexEditorOffsetColor =
     hex "#606366"
+
+
+hexEditorByte =
+    hex "#6897bb"
+
+
+hexEditorBackground =
+    hex "#222222"

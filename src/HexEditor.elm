@@ -9,6 +9,7 @@ import Css exposing ((#), (.))
 import Css.Elements
 import CssCommon
 import Colors
+import Byte
 
 
 { id, class, classList } =
@@ -18,6 +19,7 @@ import Colors
 type alias Model a =
     { a
         | memory : List Int
+        , byteDisplay : Byte.Display
     }
 
 
@@ -38,13 +40,13 @@ view model =
     table [ id HexEditor ]
         [ thead []
             [ tr []
-                (th [ class [ OffsetColumn ] ] [ text "Offset" ] :: (List.map (\offset -> th [] [ text <| String.padLeft 2 '0' (toHex offset) ]) (List.range 0 (bytesPerRow - 1))))
+                (th [ class [ OffsetColumn ] ] [ text "Offset" ] :: (List.map (\offset -> th [] [ text <| offsetHeaderDisplay model.byteDisplay offset ]) (List.range 0 (bytesPerRow - 1))))
             ]
         , tbody []
             (List.map
                 (\( rowOffset, row ) ->
-                    tr []
-                        (td [ class [ OffsetColumn, RowOffset ] ] [ text <| String.padLeft 4 '0' (toHex <| startOffset + (rowOffset * bytesPerRow)) ]
+                    tr [ class [ BytesRow ] ]
+                        (td [ class [ OffsetColumn, RowOffset ] ] [ text <| offsetDisplay model.byteDisplay (startOffset + (rowOffset * bytesPerRow)) ]
                             :: (List.map
                                     (\byte ->
                                         td [] [ text <| String.padLeft 2 '0' (toHex byte) ]
@@ -96,6 +98,27 @@ type CssIds
 type CssClasses
     = RowOffset
     | OffsetColumn
+    | BytesRow
+
+
+offsetHeaderDisplay : Byte.Display -> Int -> String
+offsetHeaderDisplay display val =
+    case display of
+        Byte.Hex ->
+            String.padLeft 2 '0' (toHex val)
+
+        Byte.Dec ->
+            String.padLeft 2 '0' (toString val)
+
+
+offsetDisplay : Byte.Display -> Int -> String
+offsetDisplay display val =
+    case display of
+        Byte.Hex ->
+            "0x" ++ String.padLeft 4 '0' (toHex val)
+
+        Byte.Dec ->
+            String.padLeft 5 '0' (toString val)
 
 
 styles : List Css.Snippet
@@ -105,6 +128,8 @@ styles =
         , Css.flexDirection Css.column
         , Css.position Css.absolute
         , Css.height (Css.pct 100)
+        , Css.width (Css.pct 100)
+        , Css.backgroundColor Colors.hexEditorBackground
         , Css.children
             [ Css.Elements.thead
                 [ Css.display Css.block
@@ -127,5 +152,8 @@ styles =
     , (.) OffsetColumn
         [ Css.width (Css.ch 8)
         , Css.textAlign Css.left
+        ]
+    , (.) BytesRow
+        [ Css.color Colors.hexEditorByte
         ]
     ]
