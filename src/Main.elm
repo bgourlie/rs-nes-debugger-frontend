@@ -25,6 +25,7 @@ import Breakpoints
 import Icons
 import Toggle
 import HexEditor
+import MemorySnapshot
 
 
 { id, class, classList } =
@@ -57,10 +58,10 @@ type alias Model =
     { messages : List ( String, Int )
     , cycles : Int
     , instructions : List Instruction.Instruction
-    , memory : List Int
+    , memory : MemorySnapshot.MemorySnapshot
     , registers : Registers.Registers
     , stepState : StepState
-    , breakpoints : Set Int
+    , breakpoints : Breakpoints.Breakpoints
     , byteDisplay : Byte.Display
     }
 
@@ -86,7 +87,7 @@ init =
             { messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
             , instructions = []
-            , memory = []
+            , memory = ( 0, [] )
             , registers = Registers.new
             , stepState = Off
             , breakpoints = Set.empty
@@ -265,13 +266,13 @@ handleDebuggerCommand model debuggerCommand =
                     | instructions = snapshot.instructions
                     , registers = snapshot.registers
                     , cycles = snapshot.cycles
-                    , memory = HexEditor.unpackAll snapshot.memory
+                    , memory = snapshot.memory
                   }
                 , cmd
                 )
 
 
-handleBreakCondition : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.Model -> ( Model, Cmd AppMessage )
+handleBreakCondition : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> ( Model, Cmd AppMessage )
 handleBreakCondition model breakReason snapshot =
     case breakReason of
         DebuggerCommand.Breakpoint ->
@@ -284,7 +285,7 @@ handleBreakCondition model breakReason snapshot =
             ( model, Cmd.none )
 
 
-breakWithMessage : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.Model -> String -> ( Model, Cmd AppMessage )
+breakWithMessage : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> String -> ( Model, Cmd AppMessage )
 breakWithMessage model breakReason snapshot message =
     -- TODO: This is a poorly named method -- It also turns off auto-step
     let
@@ -300,7 +301,7 @@ breakWithMessage model breakReason snapshot message =
 subscriptions : Model -> Sub AppMessage
 subscriptions model =
     Sub.batch
-        [ WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
+        [ WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         ]
 
 

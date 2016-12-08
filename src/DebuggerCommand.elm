@@ -1,11 +1,12 @@
 module DebuggerCommand exposing (decode, DebuggerCommand, DebuggerCommand(Break), BreakReason(Step, Breakpoint, Trap))
 
 import Json.Decode as Json exposing (Decoder, field)
+import MemorySnapshot
 import CpuSnapshot
 
 
 type DebuggerCommand
-    = Break BreakReason CpuSnapshot.Model
+    = Break BreakReason CpuSnapshot.CpuSnapshot
 
 
 type BreakReason
@@ -14,18 +15,18 @@ type BreakReason
     | Trap
 
 
-decoder : Decoder DebuggerCommand
-decoder =
-    (field "command" Json.string) |> Json.andThen decodeByCommand
+decoder : MemorySnapshot.MemorySnapshot -> Decoder DebuggerCommand
+decoder oldMemory =
+    (field "command" Json.string) |> Json.andThen (decodeByCommand oldMemory)
 
 
-decodeByCommand : String -> Decoder DebuggerCommand
-decodeByCommand cmd =
+decodeByCommand : MemorySnapshot.MemorySnapshot -> String -> Decoder DebuggerCommand
+decodeByCommand oldMemory cmd =
     case cmd of
         "break" ->
             Json.map2 (,)
                 (field "reason" breakReasonDecoder)
-                (field "snapshot" CpuSnapshot.decoder)
+                (field "snapshot" <| CpuSnapshot.decoder oldMemory)
                 |> Json.andThen (\( reason, snapshot ) -> Json.succeed <| Break reason snapshot)
 
         _ ->
@@ -52,9 +53,9 @@ breakReasonDecoder =
             )
 
 
-decode : (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
-decode failHandler successHandler json =
-    case Json.decodeString decoder json of
+decode : MemorySnapshot.MemorySnapshot -> (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
+decode oldMemory failHandler successHandler json =
+    case Json.decodeString (decoder oldMemory) json of
         Ok cmd ->
             successHandler cmd
 

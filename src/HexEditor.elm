@@ -1,4 +1,4 @@
-module HexEditor exposing (view, styles, unpackAll)
+module HexEditor exposing (view, styles)
 
 import Html exposing (table, thead, tbody, td, span, text, tr, th, Html)
 import List
@@ -10,6 +10,7 @@ import Css.Elements
 import CssCommon
 import Colors
 import Byte
+import MemorySnapshot
 
 
 { id, class, classList } =
@@ -18,7 +19,7 @@ import Byte
 
 type alias Model a =
     { a
-        | memory : List Int
+        | memory : MemorySnapshot.MemorySnapshot
         , byteDisplay : Byte.Display
     }
 
@@ -60,35 +61,9 @@ view model =
         ]
 
 
-intoRows : List Int -> List (List Int)
-intoRows bytes =
+intoRows : ( Int, List Int ) -> List (List Int)
+intoRows ( hash, bytes ) =
     List.Split.chunksOfLeft bytesPerRow (bytes |> List.drop startOffset |> List.take windowSize)
-
-
-unpackAll : List Int -> List Int
-unpackAll packedBytes =
-    List.concatMap
-        (\packedByte ->
-            let
-                ( byte1, byte2, byte3, byte4 ) =
-                    unpack32 packedByte
-            in
-                [ byte1, byte2, byte3, byte4 ]
-        )
-        packedBytes
-
-
-unpack32 : Int -> ( Int, Int, Int, Int )
-unpack32 val =
-    let
-        mask =
-            255
-    in
-        ( Bitwise.and val mask
-        , Bitwise.and (Bitwise.shiftRightBy 8 val) mask
-        , Bitwise.and (Bitwise.shiftRightBy 16 val) mask
-        , Bitwise.and (Bitwise.shiftRightBy 24 val) mask
-        )
 
 
 type CssIds
