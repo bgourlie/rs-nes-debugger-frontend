@@ -1,7 +1,8 @@
-module Instruction exposing (view, styles, decoder, Instruction, CssIds(CurrentInstruction))
+module Instruction exposing (view, styles, decoder, request, Instruction, CssIds(CurrentInstruction))
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
+import Http
 import List exposing (map, map2)
 import Svg exposing (svg)
 import Svg.Attributes
@@ -38,12 +39,34 @@ type alias Model a =
     }
 
 
-decoder : Decoder Instruction
+decoder : Decoder (List Instruction)
 decoder =
-    Json.map3 Instruction
-        (field "mnemonic" Json.string)
-        (field "addressing_mode" AddressingMode.decoder)
-        (field "offset" Json.int)
+    Json.list <|
+        Json.map3 Instruction
+            (field "mnemonic" Json.string)
+            (field "addressing_mode" AddressingMode.decoder)
+            (field "offset" Json.int)
+
+
+endpoint : String
+endpoint =
+    "http://localhost:9975/instructions"
+
+
+request : (Http.Error -> msg) -> (List Instruction -> msg) -> Cmd msg
+request failHandler successHandler =
+    let
+        result =
+            (\r ->
+                case r of
+                    Ok r ->
+                        successHandler r
+
+                    Err e ->
+                        failHandler e
+            )
+    in
+        Http.send result (Http.get endpoint decoder)
 
 
 view : (Int -> msg) -> Model a -> Html msg

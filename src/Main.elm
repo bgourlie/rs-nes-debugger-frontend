@@ -26,6 +26,7 @@ import Icons
 import Toggle
 import HexEditor
 import MemorySnapshot
+import Instruction
 
 
 { id, class, classList } =
@@ -118,6 +119,8 @@ type AppMessage
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
     | UpdateByteDisplay Byte.Display
+    | InstructionRequestSuccess (List Instruction.Instruction)
+    | InstructionRequestFail Http.Error
     | NoOp
 
 
@@ -201,6 +204,16 @@ update msg model =
         UpdateByteDisplay byteDisplay ->
             ( { model | byteDisplay = byteDisplay }, Cmd.none )
 
+        InstructionRequestSuccess instructions ->
+            ( { model | instructions = instructions }, Cmd.none )
+
+        InstructionRequestFail err ->
+            let
+                ( newModel, cmd ) =
+                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err)
+            in
+                ( newModel, cmd )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -261,14 +274,21 @@ handleDebuggerCommand model debuggerCommand =
             let
                 ( newModel, cmd ) =
                     handleBreakCondition model reason snapshot
+
+                instructionCmd =
+                    case model.instructions of
+                        [] ->
+                            Instruction.request InstructionRequestFail InstructionRequestSuccess
+
+                        _ ->
+                            Cmd.none
             in
                 ( { newModel
-                    | instructions = snapshot.instructions
-                    , registers = snapshot.registers
+                    | registers = snapshot.registers
                     , cycles = snapshot.cycles
                     , memory = snapshot.memory
                   }
-                , cmd
+                , Cmd.batch [ instructionCmd, cmd ]
                 )
 
 

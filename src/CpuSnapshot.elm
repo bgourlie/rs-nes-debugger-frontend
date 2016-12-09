@@ -5,24 +5,21 @@ import Task
 import Debug
 import Json.Decode as Json exposing (Decoder, field)
 import Registers exposing (Registers)
-import Instruction
 import MemorySnapshot
 
 
 type alias CpuSnapshot =
     { cycles : Int
     , registers : Registers.Registers
-    , instructions : List Instruction.Instruction
     , memory : MemorySnapshot.MemorySnapshot
     }
 
 
 decoder : MemorySnapshot.MemorySnapshot -> Decoder CpuSnapshot
 decoder oldMemory =
-    Json.map4 CpuSnapshot
+    Json.map3 CpuSnapshot
         (field "cycles" Json.int)
         (field "registers" Registers.decoder)
-        (field "instructions" (Json.list Instruction.decoder))
         ((field "memory" MemorySnapshot.messageDecoder)
             |> Json.andThen
                 (\memorySnapshot ->

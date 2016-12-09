@@ -1,5 +1,7 @@
 module ToggleBreakpoint exposing (request, Model)
 
+--TODO: Move all this into the Breakpoint module
+
 import Task
 import Json.Decode
 import Json.Decode exposing (Decoder, field)
