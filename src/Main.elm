@@ -128,17 +128,13 @@ update : AppMessage -> Model -> ( Model, Cmd AppMessage )
 update msg model =
     case msg of
         ToggleAutoStepClicked ->
-            handleStepInput AutoStepToggle model
+            handleStepInput AutoStepToggle ( model, Cmd.none )
 
-        DebuggerCommandReceiveSuccess cmd ->
-            handleDebuggerCommand model cmd
+        DebuggerCommandReceiveSuccess debuggerCommand ->
+            handleDebuggerCommand debuggerCommand ( model, Cmd.none )
 
         DebuggerCommandReceiveFail msg ->
-            let
-                ( newModel, cmd ) =
-                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Unable to receive debugger command: " ++ msg)
-            in
-                ( newModel, cmd )
+            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Unable to receive debugger command: " ++ msg) ( model, Cmd.none )
 
         ToggleBreakpointClick address ->
             ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
@@ -151,46 +147,44 @@ update msg model =
                     else
                         "unset"
 
-                ( newModel, cmd ) =
-                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Breakpoint " ++ verb ++ " @ 0x" ++ toHex resp.offset)
+                consoleMessage =
+                    "Breakpoint " ++ verb ++ " @ 0x" ++ toHex resp.offset
+
+                newModel =
+                    { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }
             in
-                ( { newModel | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, cmd )
+                Console.addMessage ScrollConsoleFail ScrollConsoleSucceed consoleMessage ( newModel, Cmd.none )
 
         ToggleBreakpointRequestFail err ->
             let
                 ( newModel, cmd ) =
-                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Set breakpoint fail: " ++ toString err)
+                    Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
             in
                 ( newModel, cmd )
 
         StepClick ->
-            handleStepInput SingleStep model
+            handleStepInput SingleStep ( model, Cmd.none )
 
         StepRequestSuccess resp ->
-            handleStepInput StepRequestSucceeded model
+            handleStepInput StepRequestSucceeded ( model, Cmd.none )
 
         StepRequestFail err ->
-            handleStepInput StepRequestFailed model
+            handleStepInput StepRequestFailed ( model, Cmd.none )
 
         ContinueClick ->
             let
-                ( handleStepModel, handleStepCmd ) =
-                    handleStepInput AutoStepOff model
-
-                ( newModel, addMessageCmd ) =
-                    Console.addMessage handleStepModel ScrollConsoleFail ScrollConsoleSucceed ("Execution Continued...")
+                ( newModel, newCmd ) =
+                    ( model, Cmd.none )
+                        |> handleStepInput AutoStepOff
+                        |> Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Execution Continued...")
             in
-                ( newModel, Cmd.batch [ handleStepCmd, addMessageCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
+                ( newModel, Cmd.batch [ newCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
 
         ContinueRequestSuccess resp ->
             ( model, Cmd.none )
 
         ContinueRequestFail err ->
-            let
-                ( newModel, cmd ) =
-                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err)
-            in
-                ( newModel, cmd )
+            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err) ( model, Cmd.none )
 
         ScrollInstructionIntoView ->
             ( model, scrollElementIntoView <| toString Instruction.CurrentInstruction )
@@ -205,18 +199,10 @@ update msg model =
             ( { model | byteFormat = byteFormat }, Cmd.none )
 
         InstructionRequestSuccess instructions ->
-            let
-                ( newModel, cmd ) =
-                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Received " ++ (toString <| List.length instructions) ++ " instructions")
-            in
-                ( { newModel | instructions = instructions }, cmd )
+            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Received " ++ (toString <| List.length instructions) ++ " instructions") ( { model | instructions = instructions }, Cmd.none )
 
         InstructionRequestFail err ->
-            let
-                ( newModel, cmd ) =
-                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err)
-            in
-                ( newModel, cmd )
+            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err) ( model, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -253,17 +239,21 @@ stepStateTransition currentState input =
                     Off
 
 
-handleStepInput : StepInput -> Model -> ( Model, Cmd AppMessage )
-handleStepInput input model =
-    case stepStateTransition model.stepState input of
-        Off ->
-            ( { model | stepState = Off }, Cmd.none )
+handleStepInput : StepInput -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+handleStepInput smInput state =
+    let
+        ( inputModel, inputCmd ) =
+            state
+    in
+        case stepStateTransition inputModel.stepState smInput of
+            Off ->
+                ( { inputModel | stepState = Off }, inputCmd )
 
-        SingleStepping ->
-            ( { model | stepState = SingleStepping }, Step.request StepRequestFail StepRequestSuccess )
+            SingleStepping ->
+                ( { inputModel | stepState = SingleStepping }, Cmd.batch [ inputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
 
-        AutoStepping ->
-            ( { model | stepState = AutoStepping }, Step.request StepRequestFail StepRequestSuccess )
+            AutoStepping ->
+                ( { inputModel | stepState = AutoStepping }, Cmd.batch [ inputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
 
 
 onBreakpoint : Model -> Bool
@@ -271,64 +261,70 @@ onBreakpoint model =
     Set.member model.registers.pc model.breakpoints
 
 
-handleDebuggerCommand : Model -> DebuggerCommand -> ( Model, Cmd AppMessage )
-handleDebuggerCommand model debuggerCommand =
+handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
         Break reason snapshot ->
             let
-                ( newModel, cmd ) =
-                    handleBreakCondition model reason snapshot
+                ( inputModel, inputCmd ) =
+                    appInput
 
-                ( newerModel, instructionCmd ) =
-                    case model.instructions of
-                        [] ->
-                            fetchInstructions model
-
-                        _ ->
-                            ( newModel, Cmd.none )
+                model =
+                    { inputModel
+                        | registers = snapshot.registers
+                        , cycles = snapshot.cycles
+                        , memory = snapshot.memory
+                    }
             in
-                ( { newerModel
-                    | registers = snapshot.registers
-                    , cycles = snapshot.cycles
-                    , memory = snapshot.memory
-                  }
-                , Cmd.batch [ instructionCmd, cmd ]
-                )
+                ( model, inputCmd )
+                    |> fetchInstructionsIfNeeded
+                    |> handleBreakCondition reason snapshot
 
 
-fetchInstructions : Model -> ( Model, Cmd AppMessage )
-fetchInstructions model =
+fetchInstructionsIfNeeded : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+fetchInstructionsIfNeeded appInput =
     let
-        ( newModel, cmd ) =
-            Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Requesting disassembly...")
+        ( inputModel, inputCmd ) =
+            appInput
     in
-        ( newModel, Cmd.batch [ cmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
+        case inputModel.instructions of
+            [] ->
+                appInput
+                    |> Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Requesting disassembly...")
+                    |> sendInstructionRequest
+
+            _ ->
+                appInput
 
 
-handleBreakCondition : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> ( Model, Cmd AppMessage )
-handleBreakCondition model breakReason snapshot =
+sendInstructionRequest : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+sendInstructionRequest appInput =
+    let
+        ( newModel, newCmd ) =
+            appInput
+    in
+        ( newModel, Cmd.batch [ newCmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
+
+
+handleBreakCondition : DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+handleBreakCondition breakReason snapshot appInput =
     case breakReason of
         DebuggerCommand.Breakpoint ->
-            breakWithMessage model breakReason snapshot ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc)
+            breakWithMessage breakReason snapshot ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc) appInput
 
         DebuggerCommand.Trap ->
-            breakWithMessage model breakReason snapshot ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
+            breakWithMessage breakReason snapshot ("Trap detected @ 0x" ++ toHex snapshot.registers.pc) appInput
 
         _ ->
-            ( model, Cmd.none )
+            appInput
 
 
-breakWithMessage : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> String -> ( Model, Cmd AppMessage )
-breakWithMessage model breakReason snapshot message =
+breakWithMessage : DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+breakWithMessage breakReason snapshot message appInput =
     -- TODO: This is a poorly named method -- It also turns off auto-step
-    let
-        ( postStepModel, postStepCmd ) =
-            handleStepInput AutoStepOff model
-
-        ( postMessageModel, postMessageCmd ) =
-            Console.addMessage postStepModel ScrollConsoleFail ScrollConsoleSucceed message
-    in
-        ( postMessageModel, Cmd.batch [ postStepCmd, postMessageCmd ] )
+    appInput
+        |> handleStepInput AutoStepOff
+        |> Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message
 
 
 subscriptions : Model -> Sub AppMessage

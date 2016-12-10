@@ -22,11 +22,14 @@ type alias Model a =
 -- TODO: break this up into smaller functions
 
 
-addMessage : Model a -> (Dom.Error -> msg) -> msg -> String -> ( Model a, Cmd msg )
-addMessage model failHandler successHandler message =
+addMessage : (Dom.Error -> msg) -> msg -> String -> ( Model a, Cmd msg ) -> ( Model a, Cmd msg )
+addMessage failHandler successHandler message appInput =
     let
+        ( inputModel, inputCmd ) =
+            appInput
+
         last =
-            List.head model.messages
+            List.head inputModel.messages
 
         ( messages, cmd ) =
             let
@@ -45,7 +48,7 @@ addMessage model failHandler successHandler message =
                         Nothing ->
                             ( message, 0 )
             in
-                case List.tail model.messages of
+                case List.tail inputModel.messages of
                     Just tail ->
                         let
                             ( _, newRepeats ) =
@@ -67,12 +70,12 @@ addMessage model failHandler successHandler message =
                                 in
                                     -- TODO: "ConsoleContainer" should be a toString of Main.ConsoleContainer
                                     -- refactor so we keep our compile time guarantees
-                                    ( newItem :: model.messages, Task.attempt result (Dom.Scroll.toBottom "ConsoleContainer") )
+                                    ( newItem :: inputModel.messages, Task.attempt result (Dom.Scroll.toBottom "ConsoleContainer") )
 
                     Nothing ->
-                        ( newItem :: model.messages, Cmd.none )
+                        ( newItem :: inputModel.messages, Cmd.none )
     in
-        ( { model | messages = messages }, cmd )
+        ( { inputModel | messages = messages }, Cmd.batch [ inputCmd, cmd ] )
 
 
 type CssIds
