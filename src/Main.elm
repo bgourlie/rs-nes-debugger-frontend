@@ -134,33 +134,27 @@ update msg model =
             handleDebuggerCommand debuggerCommand ( model, Cmd.none )
 
         DebuggerCommandReceiveFail msg ->
-            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Unable to receive debugger command: " ++ msg) ( model, Cmd.none )
+            consoleMessage ("Unable to receive debugger command: " ++ msg) ( model, Cmd.none )
 
         ToggleBreakpointClick address ->
             ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
 
         ToggleBreakpointRequestSuccess resp ->
             let
-                verb =
-                    if resp.isSet then
-                        "set"
-                    else
-                        "unset"
-
-                consoleMessage =
-                    "Breakpoint " ++ verb ++ " @ 0x" ++ toHex resp.offset
+                breakpointMessage =
+                    "Breakpoint "
+                        ++ if resp.isSet then
+                            "set"
+                           else
+                            "unset" ++ " @ 0x" ++ toHex resp.offset
 
                 newModel =
                     { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }
             in
-                Console.addMessage ScrollConsoleFail ScrollConsoleSucceed consoleMessage ( newModel, Cmd.none )
+                consoleMessage breakpointMessage ( newModel, Cmd.none )
 
         ToggleBreakpointRequestFail err ->
-            let
-                ( newModel, cmd ) =
-                    Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
-            in
-                ( newModel, cmd )
+            consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
 
         StepClick ->
             handleStepInput SingleStep ( model, Cmd.none )
@@ -172,19 +166,16 @@ update msg model =
             handleStepInput StepRequestFailed ( model, Cmd.none )
 
         ContinueClick ->
-            let
-                ( newModel, newCmd ) =
-                    ( model, Cmd.none )
-                        |> handleStepInput AutoStepOff
-                        |> Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Execution Continued...")
-            in
-                ( newModel, Cmd.batch [ newCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
+            ( model, Cmd.none )
+                |> handleStepInput AutoStepOff
+                |> consoleMessage ("Execution Continued...")
+                |> sendContinueRequest
 
         ContinueRequestSuccess resp ->
             ( model, Cmd.none )
 
         ContinueRequestFail err ->
-            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err) ( model, Cmd.none )
+            consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
 
         ScrollInstructionIntoView ->
             ( model, scrollElementIntoView <| toString Instruction.CurrentInstruction )
@@ -199,10 +190,14 @@ update msg model =
             ( { model | byteFormat = byteFormat }, Cmd.none )
 
         InstructionRequestSuccess instructions ->
-            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Received " ++ (toString <| List.length instructions) ++ " instructions") ( { model | instructions = instructions }, Cmd.none )
+            let
+                output =
+                    ( { model | instructions = instructions }, Cmd.none )
+            in
+                consoleMessage ("Received " ++ (toString <| List.length instructions) ++ " instructions") output
 
         InstructionRequestFail err ->
-            Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Continue request fail: " ++ toString err) ( model, Cmd.none )
+            consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -240,10 +235,10 @@ stepStateTransition currentState input =
 
 
 handleStepInput : StepInput -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
-handleStepInput smInput state =
+handleStepInput smInput appInput =
     let
         ( inputModel, inputCmd ) =
-            state
+            appInput
     in
         case stepStateTransition inputModel.stepState smInput of
             Off ->
@@ -261,6 +256,11 @@ onBreakpoint model =
     Set.member model.registers.pc model.breakpoints
 
 
+consoleMessage : String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+consoleMessage message appInput =
+    Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message appInput
+
+
 handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
 handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
@@ -269,14 +269,14 @@ handleDebuggerCommand debuggerCommand appInput =
                 ( inputModel, inputCmd ) =
                     appInput
 
-                model =
+                outputModel =
                     { inputModel
                         | registers = snapshot.registers
                         , cycles = snapshot.cycles
                         , memory = snapshot.memory
                     }
             in
-                ( model, inputCmd )
+                ( outputModel, inputCmd )
                     |> fetchInstructionsIfNeeded
                     |> handleBreakCondition reason snapshot
 
@@ -290,20 +290,29 @@ fetchInstructionsIfNeeded appInput =
         case inputModel.instructions of
             [] ->
                 appInput
-                    |> Console.addMessage ScrollConsoleFail ScrollConsoleSucceed ("Requesting disassembly...")
+                    |> consoleMessage ("Requesting disassembly...")
                     |> sendInstructionRequest
 
             _ ->
                 appInput
 
 
+sendContinueRequest : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+sendContinueRequest appInput =
+    let
+        ( inputModel, inputCmd ) =
+            appInput
+    in
+        ( inputModel, Cmd.batch [ inputCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
+
+
 sendInstructionRequest : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
 sendInstructionRequest appInput =
     let
-        ( newModel, newCmd ) =
+        ( inputModel, inputCmd ) =
             appInput
     in
-        ( newModel, Cmd.batch [ newCmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
+        ( inputModel, Cmd.batch [ inputCmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
 
 
 handleBreakCondition : DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
@@ -324,7 +333,7 @@ breakWithMessage breakReason snapshot message appInput =
     -- TODO: This is a poorly named method -- It also turns off auto-step
     appInput
         |> handleStepInput AutoStepOff
-        |> Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message
+        |> consoleMessage message
 
 
 subscriptions : Model -> Sub AppMessage
