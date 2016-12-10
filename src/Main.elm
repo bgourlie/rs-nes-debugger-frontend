@@ -205,7 +205,11 @@ update msg model =
             ( { model | byteFormat = byteFormat }, Cmd.none )
 
         InstructionRequestSuccess instructions ->
-            ( { model | instructions = instructions }, Cmd.none )
+            let
+                ( newModel, cmd ) =
+                    Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Received " ++ (toString <| List.length instructions) ++ " instructions")
+            in
+                ( { newModel | instructions = instructions }, cmd )
 
         InstructionRequestFail err ->
             let
@@ -275,21 +279,30 @@ handleDebuggerCommand model debuggerCommand =
                 ( newModel, cmd ) =
                     handleBreakCondition model reason snapshot
 
-                instructionCmd =
+                ( newerModel, instructionCmd ) =
                     case model.instructions of
                         [] ->
-                            Instruction.request InstructionRequestFail InstructionRequestSuccess
+                            fetchInstructions model
 
                         _ ->
-                            Cmd.none
+                            ( newModel, Cmd.none )
             in
-                ( { newModel
+                ( { newerModel
                     | registers = snapshot.registers
                     , cycles = snapshot.cycles
                     , memory = snapshot.memory
                   }
                 , Cmd.batch [ instructionCmd, cmd ]
                 )
+
+
+fetchInstructions : Model -> ( Model, Cmd AppMessage )
+fetchInstructions model =
+    let
+        ( newModel, cmd ) =
+            Console.addMessage model ScrollConsoleFail ScrollConsoleSucceed ("Requesting disassembly...")
+    in
+        ( newModel, Cmd.batch [ cmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
 
 
 handleBreakCondition : Model -> DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> ( Model, Cmd AppMessage )
