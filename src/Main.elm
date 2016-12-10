@@ -63,7 +63,7 @@ type alias Model =
     , registers : Registers.Registers
     , stepState : StepState
     , breakpoints : Breakpoints.Breakpoints
-    , byteDisplay : Byte.Display
+    , byteFormat : Byte.Format
     }
 
 
@@ -92,7 +92,7 @@ init =
             , registers = Registers.new
             , stepState = Off
             , breakpoints = Set.empty
-            , byteDisplay = Byte.Hex
+            , byteFormat = Byte.Hex
             }
     in
         ( model, Cmd.none )
@@ -118,7 +118,7 @@ type AppMessage
     | ScrollInstructionIntoView
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
-    | UpdateByteDisplay Byte.Display
+    | UpdateByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
     | NoOp
@@ -201,8 +201,8 @@ update msg model =
         ScrollConsoleFail _ ->
             ( model, Cmd.none )
 
-        UpdateByteDisplay byteDisplay ->
-            ( { model | byteDisplay = byteDisplay }, Cmd.none )
+        UpdateByteFormat byteFormat ->
+            ( { model | byteFormat = byteFormat }, Cmd.none )
 
         InstructionRequestSuccess instructions ->
             ( { model | instructions = instructions }, Cmd.none )
@@ -340,7 +340,7 @@ view model =
                 , button [ class [ CssCommon.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
                 , Toggle.view ToggleAutoStepClicked "autoStepToggle" "Autostep" (autoStepEnabled model)
                 ]
-            , Byte.toggleDisplayView UpdateByteDisplay model
+            , Byte.toggleDisplayView UpdateByteFormat model
             ]
         , div [ id TwoColumn ]
             [ div [ id InstructionsContainer ]

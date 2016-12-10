@@ -58,7 +58,7 @@ type alias Model a =
     { a
         | registers : Registers
         , cycles : Int
-        , byteDisplay : Byte.Display
+        , byteFormat : Byte.Format
     }
 
 
@@ -91,7 +91,7 @@ view model =
             model.registers
 
         display =
-            model.byteDisplay
+            model.byteFormat
 
         cycles =
             model.cycles

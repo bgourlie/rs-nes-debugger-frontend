@@ -35,7 +35,7 @@ type alias Model a =
         | instructions : List Instruction
         , registers : Registers.Registers
         , breakpoints : Breakpoints.Breakpoints
-        , byteDisplay : Byte.Display
+        , byteFormat : Byte.Format
     }
 
 
@@ -81,15 +81,15 @@ view breakpointClickHandler model =
         breakpoints =
             model.breakpoints
 
-        byteDisplay =
-            model.byteDisplay
+        byteFormat =
+            model.byteFormat
     in
         Html.table [ id Instructions ]
             (map
                 (\instruction ->
                     Html.tr (currentInstructionAttrs instruction.offset pc)
                         [ Html.td [ class [ Gutter ] ]
-                            [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteDisplay instruction.offset ]
+                            [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteFormat instruction.offset ]
                             , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
                                 [ Icons.breakpoint
                                 ]
@@ -97,7 +97,7 @@ view breakpointClickHandler model =
                         , Html.td []
                             [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
                             , Html.span [] [ Html.text " " ]
-                            , Html.span [ class [ Operand ] ] [ AddressingMode.view byteDisplay instruction.addressingMode ]
+                            , Html.span [ class [ Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
                             ]
                         ]
                 )

@@ -20,7 +20,7 @@ import MemorySnapshot
 type alias Model a =
     { a
         | memory : MemorySnapshot.MemorySnapshot
-        , byteDisplay : Byte.Display
+        , byteFormat : Byte.Format
     }
 
 
@@ -41,13 +41,13 @@ view model =
     table [ id HexEditor ]
         [ thead []
             [ tr []
-                (th [ class [ OffsetColumn ] ] [ text "Offset" ] :: (List.map (\offset -> th [] [ text <| offsetHeaderDisplay model.byteDisplay offset ]) (List.range 0 (bytesPerRow - 1))))
+                (th [ class [ OffsetColumn ] ] [ text "Offset" ] :: (List.map (\offset -> th [] [ text <| offsetHeaderDisplay model.byteFormat offset ]) (List.range 0 (bytesPerRow - 1))))
             ]
         , tbody []
             (List.map
                 (\( rowOffset, row ) ->
                     tr [ class [ BytesRow ] ]
-                        (td [ class [ OffsetColumn, RowOffset ] ] [ text <| offsetDisplay model.byteDisplay (startOffset + (rowOffset * bytesPerRow)) ]
+                        (td [ class [ OffsetColumn, RowOffset ] ] [ text <| offsetDisplay model.byteFormat (startOffset + (rowOffset * bytesPerRow)) ]
                             :: (List.map
                                     (\byte ->
                                         td [] [ text <| String.padLeft 2 '0' (toHex byte) ]
@@ -76,7 +76,7 @@ type CssClasses
     | BytesRow
 
 
-offsetHeaderDisplay : Byte.Display -> Int -> String
+offsetHeaderDisplay : Byte.Format -> Int -> String
 offsetHeaderDisplay display val =
     case display of
         Byte.Hex ->
@@ -86,7 +86,7 @@ offsetHeaderDisplay display val =
             String.padLeft 2 '0' (toString val)
 
 
-offsetDisplay : Byte.Display -> Int -> String
+offsetDisplay : Byte.Format -> Int -> String
 offsetDisplay display val =
     case display of
         Byte.Hex ->
