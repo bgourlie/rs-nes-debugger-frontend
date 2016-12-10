@@ -23,7 +23,7 @@ import Colors
 import Byte
 import Breakpoints
 import Icons
-import Toggle
+import ToggleButton
 import HexEditor
 import MemorySnapshot
 import Instruction
@@ -106,7 +106,7 @@ type AppMessage
     = DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
     | ToggleBreakpointClick Int
-    | ToggleBreakpointRequestSuccess ToggleBreakpoint.Model
+    | ToggleBreakpointRequestSuccess ToggleBreakpoint.Message
     | ToggleBreakpointRequestFail Http.Error
     | StepClick
     | StepRequestSuccess Step.Model
@@ -356,7 +356,7 @@ view model =
                 [ button [ class [ CssCommon.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
                 , button [ class [ CssCommon.Button ], onClick StepClick, disabled <| autoStepEnabled model, title "Step" ] [ Icons.step ]
                 , button [ class [ CssCommon.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
-                , Toggle.view ToggleAutoStepClicked "autoStepToggle" "Autostep" (autoStepEnabled model)
+                , ToggleButton.view ToggleAutoStepClicked "autoStepToggle" "Autostep" (autoStepEnabled model)
                 ]
             , Byte.toggleDisplayView UpdateByteFormat model
             ]
