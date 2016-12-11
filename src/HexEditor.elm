@@ -67,7 +67,7 @@ intoRows model =
             |> List.map
                 (\( rowOffset, row ) ->
                     tr [ class [ BytesRow ] ]
-                        (td [ class [ OffsetColumn, RowOffset ] ] [ text <| offsetDisplay model.byteFormat (startOffset + (rowOffset * bytesPerRow)) ]
+                        (td [ class [ OffsetColumn, RowOffset ] ] [ Byte.view16 model.byteFormat (startOffset + (rowOffset * bytesPerRow)) ]
                             :: (List.map
                                     (\byte ->
                                         td [] [ text <| String.padLeft 2 '0' (toHex byte) ]
@@ -96,16 +96,6 @@ offsetHeaderDisplay display val =
 
         Byte.Dec ->
             String.padLeft 2 '0' (toString val)
-
-
-offsetDisplay : Byte.Format -> Int -> String
-offsetDisplay display val =
-    case display of
-        Byte.Hex ->
-            "0x" ++ String.padLeft 4 '0' (toHex val)
-
-        Byte.Dec ->
-            String.padLeft 5 '0' (toString val)
 
 
 styles : List Css.Snippet

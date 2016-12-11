@@ -114,7 +114,7 @@ view breakpointClickHandler model =
                     (\instruction ->
                         Html.tr (currentInstructionAttrs instruction.offset pc)
                             [ Html.td [ class [ Gutter ] ]
-                                [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteFormat instruction.offset ]
+                                [ Html.div [ class [ MemoryLocation ] ] [ Byte.view16 byteFormat instruction.offset ]
                                 , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
                                     [ Icons.breakpoint
                                     ]
