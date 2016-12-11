@@ -7,14 +7,14 @@ const Elm = require('./src/Main');
 const app = Elm.Main.fullscreen();
 const scrollEventElements = [];
 
-app.ports.scrollElementIntoView.subscribe(function(cls) {
+app.ports.scrollElementIntoViewCommand.subscribe(function(cls) {
     const elem = document.getElementsByClassName(cls)[0];
     if (elem) {
         elem.scrollIntoView();
     }
 });
 
-app.ports.receiveScrollEventsFor.subscribe(function(elemId) {
+app.ports.receiveScrollEventsForCommand.subscribe(function(elemId) {
     const elem = document.getElementById(elemId);
     if (elem) {
         scrollEventElements[elemId] = { lastKnownScrollPosition: 0, ticking: false }

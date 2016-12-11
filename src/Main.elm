@@ -53,12 +53,12 @@ main =
 
 {-| Given a class name, scroll the first element with that class into view.
 -}
-port scrollElementIntoView : String -> Cmd msg
+port scrollElementIntoViewCommand : String -> Cmd msg
 
 
 {-| Will report scroll events for the element with the given id back through the scrollEvents port.
 -}
-port receiveScrollEventsFor : String -> Cmd msg
+port receiveScrollEventsForCommand : String -> Cmd msg
 
 
 {-| Report scroll events.
@@ -81,7 +81,6 @@ type alias Model =
     , stepState : StepState
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
-    , consoleLogLevel : ConsoleLogLevel
     }
 
 
@@ -95,11 +94,6 @@ type StepState
     = Off
     | SingleStepping
     | AutoStepping
-
-
-type ConsoleLogLevel
-    = Debug
-    | Info
 
 
 type StepInput
@@ -124,10 +118,9 @@ init =
             , stepState = Off
             , breakpoints = Set.empty
             , byteFormat = Byte.Hex
-            , consoleLogLevel = Debug
             }
     in
-        ( model, Cmd.batch [ receiveScrollEventsFor "InstructionsContainer", receiveScrollEventsFor "HexEditorBody" ] )
+        ( model, Cmd.batch [ receiveScrollEventsForCommand "InstructionsContainer", receiveScrollEventsForCommand "HexEditorBody" ] )
 
 
 
@@ -147,7 +140,7 @@ type AppMessage
     | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
     | ToggleAutoStepClicked
-    | ScrollInstructionIntoView
+    | ScrollInstructionIntoViewClick
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
     | UpdateByteFormat Byte.Format
@@ -194,7 +187,9 @@ update msg model =
             transitionStepState SingleStep ( model, Cmd.none )
 
         StepRequestSuccess resp ->
-            transitionStepState StepRequestSucceeded ( model, Cmd.none )
+         ( model, Cmd.none )
+            |> transitionStepState StepRequestSucceeded
+            |> scrollElementIntoView ( toString Instruction.CurrentInstruction )
 
         StepRequestFail err ->
             ( model, Cmd.none )
@@ -213,8 +208,9 @@ update msg model =
         ContinueRequestFail err ->
             consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
 
-        ScrollInstructionIntoView ->
-            ( model, scrollElementIntoView <| toString Instruction.CurrentInstruction )
+        ScrollInstructionIntoViewClick ->
+            (model, Cmd.none)
+                |> scrollElementIntoView ( toString Instruction.CurrentInstruction )
 
         ScrollConsoleSucceed ->
             ( model, Cmd.none )
@@ -242,6 +238,15 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+scrollElementIntoView : String -> (Model, Cmd AppMessage) -> (Model, Cmd AppMessage)
+scrollElementIntoView class appInput =
+    let
+        (inputMessage, inputCmd) =
+            appInput
+    in
+        ( inputMessage, Cmd.batch [ inputCmd, scrollElementIntoViewCommand class ] )
 
 
 getNewStepState : StepState -> StepInput -> StepState
@@ -302,7 +307,6 @@ transitionStepState smInput appInput =
             getNewStepState inputModel.stepState smInput
     in
         appInput
-            |> consoleDebug ("Step state transition from " ++ (toString inputModel.stepState) ++ " to " ++ (toString newStepState))
             |> case newStepState of
                 Off ->
                     \( outputModel, outputCmd ) ->
@@ -315,7 +319,6 @@ transitionStepState smInput appInput =
                 AutoStepping ->
                     \output ->
                         output
-                            |> consoleDebug "Sending AutoStep request"
                             |> \( outputModel, outputCmd ) ->
                                 ( { outputModel | stepState = AutoStepping }, Cmd.batch [ outputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
 
@@ -329,17 +332,6 @@ consoleMessage : String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage 
 consoleMessage message appInput =
     Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message appInput
 
-
-consoleDebug : String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
-consoleDebug msg appInput =
-    let
-        ( inputModel, _ ) =
-            appInput
-    in
-        if inputModel.consoleLogLevel == Debug then
-            consoleMessage msg appInput
-        else
-            appInput
 
 
 handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
@@ -400,11 +392,13 @@ handleBreakCondition breakReason snapshot appInput =
             appInput
                 |> consoleMessage ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc)
                 |> transitionStepState AutoStepOff
+                --|> scrollElementIntoView ( toString Instruction.CurrentInstruction )
 
         DebuggerCommand.Trap ->
             appInput
                 |> consoleMessage ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
                 |> transitionStepState AutoStepOff
+                --|> scrollElementIntoView ( toString Instruction.CurrentInstruction )
 
         _ ->
             appInput
@@ -447,7 +441,7 @@ view model =
             , div [ id DebuggerButtons ]
                 [ button [ class [ CssCommon.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
                 , button [ class [ CssCommon.Button ], onClick StepClick, disabled <| autoStepEnabled model, title "Step" ] [ Icons.step ]
-                , button [ class [ CssCommon.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
+                , button [ class [ CssCommon.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
                 , ToggleButton.view ToggleAutoStepClicked "autoStepToggle" "Autostep" (autoStepEnabled model)
                 ]
             , Byte.toggleDisplayView UpdateByteFormat model
