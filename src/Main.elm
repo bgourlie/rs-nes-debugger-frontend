@@ -171,18 +171,7 @@ update msg model =
             ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
 
         ToggleBreakpointRequestSuccess resp ->
-            let
-                breakpointMessage =
-                    "Breakpoint "
-                        ++ if resp.isSet then
-                            "set"
-                           else
-                            "unset" ++ " @ 0x" ++ toHex resp.offset
-            in
-                ( model, Cmd.none )
-                    |> consoleMessage breakpointMessage
-                    |> \( newModel, newCmd ) ->
-                        ( { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, newCmd )
+            ( { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, Cmd.none )
 
         ToggleBreakpointRequestFail err ->
             consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
