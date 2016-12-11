@@ -15,9 +15,9 @@ import Css exposing ((#))
 import Css.Elements
 import ParseInt exposing (toHex)
 import CssCommon
-import DebuggerCommand exposing (DebuggerCommand(Break))
+import DebuggerCommand exposing (BreakReason, DebuggerCommand(Break))
 import Instruction
-import CpuSnapshot
+import CpuSnapshot exposing (CpuSnapshot)
 import ToggleBreakpoint
 import Continue
 import Registers
@@ -42,7 +42,7 @@ wsDebuggerEndpoint =
     "ws://localhost:9976"
 
 
-main : Program Never Model AppMessage
+main : Program Never Model Msg
 main =
     Html.program
         { init = init
@@ -106,7 +106,7 @@ type StepInput
     | StepRequestFailed
 
 
-init : ( Model, Cmd AppMessage )
+init : ( Model, Cmd Msg )
 init =
     let
         model =
@@ -130,7 +130,7 @@ init =
 -- UPDATE
 
 
-type AppMessage
+type Msg
     = DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
     | ToggleBreakpointClick Int
@@ -155,7 +155,7 @@ type AppMessage
     | NoOp
 
 
-update : AppMessage -> Model -> ( Model, Cmd AppMessage )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ToggleAutoStepClicked ->
@@ -251,7 +251,7 @@ update msg model =
             ( model, Cmd.none )
 
 
-defer : Cmd Defer.Msg -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+defer : Cmd Defer.Msg -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 defer cmd appInput =
     let
         ( inputModel, inputCmd ) =
@@ -263,7 +263,7 @@ defer cmd appInput =
         ( { inputModel | deferred = deferModel }, Cmd.batch [ inputCmd, Cmd.map DeferMsg deferCmd ] )
 
 
-scrollElementIntoView : String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+scrollElementIntoView : String -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 scrollElementIntoView class appInput =
     appInput
         |> defer (scrollElementIntoViewCommand class)
@@ -302,7 +302,7 @@ getNewStepState currentState input =
                     Off
 
 
-handleInstructionsResponse : List Instruction.Instruction -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+handleInstructionsResponse : List Instruction.Instruction -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleInstructionsResponse instructions appInput =
     let
         ( inputModel, inputCmd ) =
@@ -316,7 +316,7 @@ handleInstructionsResponse instructions appInput =
         ( { inputModel | instructions = instructions, instructionOffsetMap = instrMap }, inputCmd )
 
 
-transitionStepState : StepInput -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+transitionStepState : StepInput -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 transitionStepState smInput appInput =
     let
         ( inputModel, inputCmd ) =
@@ -327,6 +327,9 @@ transitionStepState smInput appInput =
 
         newStepState =
             getNewStepState inputModel.stepState smInput
+
+        stepRequest =
+            Step.request StepRequestFail StepRequestSuccess
     in
         appInput
             |> case newStepState of
@@ -336,13 +339,13 @@ transitionStepState smInput appInput =
 
                 SingleStepping ->
                     \( outputModel, outputCmd ) ->
-                        ( { outputModel | stepState = SingleStepping }, Cmd.batch [ outputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
+                        ( { outputModel | stepState = SingleStepping }, Cmd.batch [ outputCmd, stepRequest ] )
 
                 AutoStepping ->
                     \output ->
                         output
                             |> \( outputModel, outputCmd ) ->
-                                ( { outputModel | stepState = AutoStepping }, Cmd.batch [ outputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
+                                ( { outputModel | stepState = AutoStepping }, Cmd.batch [ outputCmd, stepRequest ] )
 
 
 onBreakpoint : Model -> Bool
@@ -350,12 +353,12 @@ onBreakpoint model =
     Set.member model.registers.pc model.breakpoints
 
 
-consoleMessage : String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+consoleMessage : String -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 consoleMessage message appInput =
     Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message appInput
 
 
-handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
         Break reason snapshot ->
@@ -372,7 +375,7 @@ handleDebuggerCommand debuggerCommand appInput =
                     )
 
 
-fetchInstructionsIfNeeded : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+fetchInstructionsIfNeeded : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 fetchInstructionsIfNeeded appInput =
     let
         ( inputModel, inputCmd ) =
@@ -388,7 +391,7 @@ fetchInstructionsIfNeeded appInput =
                 appInput
 
 
-sendContinueRequest : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+sendContinueRequest : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 sendContinueRequest appInput =
     let
         ( inputModel, inputCmd ) =
@@ -397,7 +400,7 @@ sendContinueRequest appInput =
         ( inputModel, Cmd.batch [ inputCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
 
 
-sendInstructionRequest : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+sendInstructionRequest : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 sendInstructionRequest appInput =
     let
         ( inputModel, inputCmd ) =
@@ -406,7 +409,7 @@ sendInstructionRequest appInput =
         ( inputModel, Cmd.batch [ inputCmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
 
 
-handleBreakCondition : DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+handleBreakCondition : BreakReason -> CpuSnapshot -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleBreakCondition breakReason snapshot appInput =
     case breakReason of
         DebuggerCommand.Breakpoint ->
@@ -425,7 +428,7 @@ handleBreakCondition breakReason snapshot appInput =
             appInput
 
 
-subscriptions : Model -> Sub AppMessage
+subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ WebSocket.listen wsDebuggerEndpoint <|
@@ -435,7 +438,7 @@ subscriptions model =
         ]
 
 
-scrollEventMapper : Json.Encode.Value -> AppMessage
+scrollEventMapper : Json.Encode.Value -> Msg
 scrollEventMapper value =
     let
         decoder =
@@ -455,7 +458,7 @@ scrollEventMapper value =
 -- VIEW
 
 
-view : Model -> Html AppMessage
+view : Model -> Html Msg
 view model =
     div [ id Container ]
         [ header []
