@@ -4,6 +4,8 @@ import Html exposing (Html, Attribute, div, text, ul, li, button, header, input,
 import Html.Attributes exposing (disabled, checked, type_, title)
 import Html.Events exposing (onClick)
 import Dom
+import Json.Encode
+import Json.Decode
 import Set exposing (Set)
 import Dict exposing (Dict)
 import Http
@@ -49,7 +51,19 @@ main =
         }
 
 
+{-| Given a class name, scroll the first element with that class into view.
+-}
 port scrollElementIntoView : String -> Cmd msg
+
+
+{-| Will report scroll events for the element with the given id back through the scrollEvents port.
+-}
+port receiveScrollEventsFor : String -> Cmd msg
+
+
+{-| Report scroll events.
+-}
+port scrollEvent : (Json.Encode.Value -> msg) -> Sub msg
 
 
 
@@ -68,6 +82,12 @@ type alias Model =
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
     , consoleLogLevel : ConsoleLogLevel
+    }
+
+
+type alias ScrollEvent =
+    { elementId : String
+    , scrollPosition : Float
     }
 
 
@@ -104,10 +124,10 @@ init =
             , stepState = Off
             , breakpoints = Set.empty
             , byteFormat = Byte.Hex
-            , consoleLogLevel = Info
+            , consoleLogLevel = Debug
             }
     in
-        ( model, Cmd.none )
+        ( model, Cmd.batch [ receiveScrollEventsFor "InstructionsContainer", receiveScrollEventsFor "HexEditorBody" ] )
 
 
 
@@ -133,6 +153,8 @@ type AppMessage
     | UpdateByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
+    | ScrollEventReceived ScrollEvent
+    | ScrollEventDecodeError String
     | NoOp
 
 
@@ -210,6 +232,13 @@ update msg model =
 
         InstructionRequestFail err ->
             consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
+
+        ScrollEventReceived e ->
+            ( model, Cmd.none )
+
+        ScrollEventDecodeError err ->
+            ( model, Cmd.none )
+                |> consoleMessage ("ScrollDecodeError: " ++ err)
 
         NoOp ->
             ( model, Cmd.none )
@@ -386,7 +415,24 @@ subscriptions model =
     Sub.batch
         [ WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
+        , scrollEvent scrollEventMapper
         ]
+
+
+scrollEventMapper : Json.Encode.Value -> AppMessage
+scrollEventMapper value =
+    let
+        decoder =
+            Json.Decode.map2 ScrollEvent
+                (Json.Decode.field "elementId" Json.Decode.string)
+                (Json.Decode.field "scrollPosition" Json.Decode.float)
+    in
+        case Json.Decode.decodeValue decoder value of
+            Ok scrollEvent ->
+                ScrollEventReceived scrollEvent
+
+            Err decodeError ->
+                ScrollEventDecodeError decodeError
 
 
 

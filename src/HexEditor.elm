@@ -49,7 +49,7 @@ view model =
     in
         table [ id HexEditor ]
             [ thead [] [ tr [] offsetHeaderCells ]
-            , tbody [] (intoRows model)
+            , tbody [ id HexEditorBody ] (intoRows model)
             ]
 
 
@@ -80,6 +80,7 @@ intoRows model =
 
 type CssIds
     = HexEditor
+    | HexEditorBody
 
 
 type CssClasses
