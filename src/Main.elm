@@ -67,6 +67,7 @@ type alias Model =
     , stepState : StepState
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
+    , consoleLogLevel : ConsoleLogLevel
     }
 
 
@@ -74,6 +75,11 @@ type StepState
     = Off
     | SingleStepping
     | AutoStepping
+
+
+type ConsoleLogLevel
+    = Debug
+    | Info
 
 
 type StepInput
@@ -98,6 +104,7 @@ init =
             , stepState = Off
             , breakpoints = Set.empty
             , byteFormat = Byte.Hex
+            , consoleLogLevel = Info
             }
     in
         ( model, Cmd.none )
@@ -133,7 +140,7 @@ update : AppMessage -> Model -> ( Model, Cmd AppMessage )
 update msg model =
     case msg of
         ToggleAutoStepClicked ->
-            handleStepInput AutoStepToggle ( model, Cmd.none )
+            transitionStepState AutoStepToggle ( model, Cmd.none )
 
         DebuggerCommandReceiveSuccess debuggerCommand ->
             handleDebuggerCommand debuggerCommand ( model, Cmd.none )
@@ -152,28 +159,30 @@ update msg model =
                             "set"
                            else
                             "unset" ++ " @ 0x" ++ toHex resp.offset
-
-                newModel =
-                    { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }
             in
-                consoleMessage breakpointMessage ( newModel, Cmd.none )
+                ( model, Cmd.none )
+                    |> consoleMessage breakpointMessage
+                    |> \( newModel, newCmd ) ->
+                        ( { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, newCmd )
 
         ToggleBreakpointRequestFail err ->
             consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
 
         StepClick ->
-            handleStepInput SingleStep ( model, Cmd.none )
+            transitionStepState SingleStep ( model, Cmd.none )
 
         StepRequestSuccess resp ->
-            handleStepInput StepRequestSucceeded ( model, Cmd.none )
+            transitionStepState StepRequestSucceeded ( model, Cmd.none )
 
         StepRequestFail err ->
-            handleStepInput StepRequestFailed ( model, Cmd.none )
+            ( model, Cmd.none )
+                |> consoleMessage "Step request failed"
+                |> transitionStepState StepRequestFailed
 
         ContinueClick ->
             ( model, Cmd.none )
-                |> handleStepInput AutoStepOff
-                |> consoleMessage ("Execution Continued...")
+                |> consoleMessage "Execution Continued..."
+                |> transitionStepState AutoStepOff
                 |> sendContinueRequest
 
         ContinueRequestSuccess resp ->
@@ -206,8 +215,8 @@ update msg model =
             ( model, Cmd.none )
 
 
-stepStateTransition : StepState -> StepInput -> StepState
-stepStateTransition currentState input =
+getNewStepState : StepState -> StepInput -> StepState
+getNewStepState currentState input =
     case currentState of
         Off ->
             case input of
@@ -251,21 +260,35 @@ handleInstructionsResponse instructions appInput =
         ( { inputModel | instructions = instructions, instructionOffsetMap = instrMap }, inputCmd )
 
 
-handleStepInput : StepInput -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
-handleStepInput smInput appInput =
+transitionStepState : StepInput -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+transitionStepState smInput appInput =
     let
         ( inputModel, inputCmd ) =
             appInput
+
+        oldStepState =
+            inputModel.stepState
+
+        newStepState =
+            getNewStepState inputModel.stepState smInput
     in
-        case stepStateTransition inputModel.stepState smInput of
-            Off ->
-                ( { inputModel | stepState = Off }, inputCmd )
+        appInput
+            |> consoleDebug ("Step state transition from " ++ (toString inputModel.stepState) ++ " to " ++ (toString newStepState))
+            |> case newStepState of
+                Off ->
+                    \( outputModel, outputCmd ) ->
+                        ( { outputModel | stepState = Off }, outputCmd )
 
-            SingleStepping ->
-                ( { inputModel | stepState = SingleStepping }, Cmd.batch [ inputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
+                SingleStepping ->
+                    \( outputModel, outputCmd ) ->
+                        ( { outputModel | stepState = SingleStepping }, Cmd.batch [ outputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
 
-            AutoStepping ->
-                ( { inputModel | stepState = AutoStepping }, Cmd.batch [ inputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
+                AutoStepping ->
+                    \output ->
+                        output
+                            |> consoleDebug "Sending AutoStep request"
+                            |> \( outputModel, outputCmd ) ->
+                                ( { outputModel | stepState = AutoStepping }, Cmd.batch [ outputCmd, (Step.request StepRequestFail StepRequestSuccess) ] )
 
 
 onBreakpoint : Model -> Bool
@@ -278,24 +301,33 @@ consoleMessage message appInput =
     Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message appInput
 
 
+consoleDebug : String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+consoleDebug msg appInput =
+    let
+        ( inputModel, _ ) =
+            appInput
+    in
+        if inputModel.consoleLogLevel == Debug then
+            consoleMessage msg appInput
+        else
+            appInput
+
+
 handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
 handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
         Break reason snapshot ->
-            let
-                ( inputModel, inputCmd ) =
-                    appInput
-
-                outputModel =
-                    { inputModel
+            appInput
+                |> fetchInstructionsIfNeeded
+                |> handleBreakCondition reason snapshot
+                |> \( outputModel, outputCmd ) ->
+                    ( { outputModel
                         | registers = snapshot.registers
                         , cycles = snapshot.cycles
                         , memory = snapshot.memory
-                    }
-            in
-                ( outputModel, inputCmd )
-                    |> fetchInstructionsIfNeeded
-                    |> handleBreakCondition reason snapshot
+                      }
+                    , outputCmd
+                    )
 
 
 fetchInstructionsIfNeeded : ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
@@ -336,27 +368,24 @@ handleBreakCondition : DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot ->
 handleBreakCondition breakReason snapshot appInput =
     case breakReason of
         DebuggerCommand.Breakpoint ->
-            breakWithMessage breakReason snapshot ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc) appInput
+            appInput
+                |> consoleMessage ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc)
+                |> transitionStepState AutoStepOff
 
         DebuggerCommand.Trap ->
-            breakWithMessage breakReason snapshot ("Trap detected @ 0x" ++ toHex snapshot.registers.pc) appInput
+            appInput
+                |> consoleMessage ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
+                |> transitionStepState AutoStepOff
 
         _ ->
             appInput
 
 
-breakWithMessage : DebuggerCommand.BreakReason -> CpuSnapshot.CpuSnapshot -> String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
-breakWithMessage breakReason snapshot message appInput =
-    -- TODO: This is a poorly named method -- It also turns off auto-step
-    appInput
-        |> handleStepInput AutoStepOff
-        |> consoleMessage message
-
-
 subscriptions : Model -> Sub AppMessage
 subscriptions model =
     Sub.batch
-        [ WebSocket.listen wsDebuggerEndpoint <| DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
+        [ WebSocket.listen wsDebuggerEndpoint <|
+            DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         ]
 
 
