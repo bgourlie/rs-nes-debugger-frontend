@@ -11,6 +11,7 @@ import Byte
 import Icons
 import ToggleButton
 import HexEditor
+import Icons
 import CssCommon
 import Colors
 
@@ -47,4 +48,5 @@ css =
             , Byte.styles
             , ToggleButton.styles
             , HexEditor.styles
+            , Icons.styles
             ]

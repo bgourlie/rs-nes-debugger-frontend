@@ -526,6 +526,8 @@ styles =
         [ Css.displayFlex
         , Css.flexDirection Css.row
         , Css.property "flex" "1 1 auto"
+        , Css.minHeight (Css.px 0)
+        , Css.minWidth (Css.px 0)
         ]
     , (#) InstructionsContainer
         [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
