@@ -5,6 +5,7 @@ import Dom
 import Dom.Scroll
 import Html exposing (Html)
 import Css
+import Css.Elements
 import CssCommon
 import Colors
 import Css exposing ((#), (.))
@@ -93,6 +94,11 @@ styles =
         [ Css.height (Css.pct 100)
         , Css.padding2 (Css.px 5) (Css.px 10)
         , Css.backgroundColor Colors.consoleBackground
+        , Css.descendants
+            [ Css.Elements.li
+                [ Css.paddingBottom (Css.em 0.2)
+                ]
+            ]
         ]
     , (.) MessageRepeats
         [ Css.display Css.inlineBlock
