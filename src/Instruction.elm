@@ -1,9 +1,10 @@
-module Instruction exposing (view, styles, decoder, request, Instruction, CssIds(CurrentInstruction))
+module Instruction exposing (view, styles, decoder, request, Instruction, OffsetMap, CssIds(CurrentInstruction))
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
 import Http
 import List exposing (map, map2)
+import Dict exposing (Dict)
 import Svg exposing (svg)
 import Svg.Attributes
 import Json.Decode as Json exposing (Decoder, field)
@@ -30,9 +31,15 @@ type alias Instruction =
     }
 
 
+type alias OffsetMap =
+    Dict Int Int
+
+
 type alias Model a =
     { a
         | instructions : List Instruction
+        , instructionsDisplayed : Int
+        , instructionOffsetMap : OffsetMap
         , registers : Registers.Registers
         , breakpoints : Breakpoints.Breakpoints
         , byteFormat : Byte.Format
@@ -78,30 +85,47 @@ view breakpointClickHandler model =
         instructions =
             model.instructions
 
+        instructionOffsetMap =
+            model.instructionOffsetMap
+
         breakpoints =
             model.breakpoints
 
         byteFormat =
             model.byteFormat
+
+        instructionsDisplayed =
+            model.instructionsDisplayed
+
+        halfWindowSize =
+            floor <| (toFloat instructionsDisplayed) / 2.0
+
+        pivotIndex =
+            Maybe.withDefault 0 (Dict.get pc instructionOffsetMap)
+
+        instructionsToDrop =
+            max 0 (pivotIndex - halfWindowSize)
     in
         Html.table [ id Instructions ]
-            (map
-                (\instruction ->
-                    Html.tr (currentInstructionAttrs instruction.offset pc)
-                        [ Html.td [ class [ Gutter ] ]
-                            [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteFormat instruction.offset ]
-                            , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
-                                [ Icons.breakpoint
+            (instructions
+                |> List.drop instructionsToDrop
+                |> List.take instructionsDisplayed
+                |> map
+                    (\instruction ->
+                        Html.tr (currentInstructionAttrs instruction.offset pc)
+                            [ Html.td [ class [ Gutter ] ]
+                                [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteFormat instruction.offset ]
+                                , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
+                                    [ Icons.breakpoint
+                                    ]
+                                ]
+                            , Html.td []
+                                [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
+                                , Html.span [] [ Html.text " " ]
+                                , Html.span [ class [ Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
                                 ]
                             ]
-                        , Html.td []
-                            [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
-                            , Html.span [] [ Html.text " " ]
-                            , Html.span [ class [ Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
-                            ]
-                        ]
-                )
-                instructions
+                    )
             )
 
 

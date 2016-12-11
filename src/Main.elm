@@ -5,6 +5,7 @@ import Html.Attributes exposing (disabled, checked, type_, title)
 import Html.Events exposing (onClick)
 import Dom
 import Set exposing (Set)
+import Dict exposing (Dict)
 import Http
 import WebSocket
 import Css exposing ((#))
@@ -59,6 +60,8 @@ type alias Model =
     { messages : List ( String, Int )
     , cycles : Int
     , instructions : List Instruction.Instruction
+    , instructionsDisplayed : Int
+    , instructionOffsetMap : Instruction.OffsetMap
     , memory : MemorySnapshot.MemorySnapshot
     , registers : Registers.Registers
     , stepState : StepState
@@ -88,6 +91,8 @@ init =
             { messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
             , instructions = []
+            , instructionsDisplayed = 128
+            , instructionOffsetMap = Dict.empty
             , memory = ( 0, [] )
             , registers = Registers.new
             , stepState = Off
@@ -190,11 +195,9 @@ update msg model =
             ( { model | byteFormat = byteFormat }, Cmd.none )
 
         InstructionRequestSuccess instructions ->
-            let
-                output =
-                    ( { model | instructions = instructions }, Cmd.none )
-            in
-                consoleMessage ("Received " ++ (toString <| List.length instructions) ++ " instructions") output
+            ( model, Cmd.none )
+                |> consoleMessage ("Received " ++ (toString <| List.length instructions) ++ " instructions")
+                |> handleInstructionsResponse instructions
 
         InstructionRequestFail err ->
             consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
@@ -232,6 +235,20 @@ stepStateTransition currentState input =
 
                 _ ->
                     Off
+
+
+handleInstructionsResponse : List Instruction.Instruction -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+handleInstructionsResponse instructions appInput =
+    let
+        ( inputModel, inputCmd ) =
+            appInput
+
+        instrMap =
+            instructions
+                |> List.indexedMap (\index instr -> ( instr.offset, index ))
+                |> Dict.fromList
+    in
+        ( { inputModel | instructions = instructions, instructionOffsetMap = instrMap }, inputCmd )
 
 
 handleStepInput : StepInput -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
