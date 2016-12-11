@@ -170,11 +170,19 @@ styles =
         ]
     , (.) BreakpointHitBox
         [ Css.display Css.inlineBlock
-        , Css.paddingLeft (Css.em 0.5)
+        , Css.property "transition" "opacity .15s"
+        , Css.paddingLeft (Css.em 0.6)
         , Css.opacity (Css.num 0)
+        , Css.cursor Css.pointer
+        , Css.hover
+            [ Css.opacity (Css.num 0.2)
+            ]
         ]
     , (.) BreakpointOn
         [ Css.opacity (Css.num 1.0)
+        , Css.hover
+            [ Css.opacity (Css.num 1.0)
+            ]
         ]
     , (.) Mnemonic
         [ Css.color Colors.mnemonic
