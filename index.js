@@ -26,7 +26,7 @@ app.ports.receiveScrollEventsForCommand.subscribe(function(elemId) {
 });
 
 function rsNesHandleScrollEventHandler(e) {
-    const element = event.target;
+    const element = e.target;
     const elemInfo = scrollEventElements[element.id]
     if (elemInfo) {
         elemInfo.lastKnownScrollPosition = element.scrollY;
