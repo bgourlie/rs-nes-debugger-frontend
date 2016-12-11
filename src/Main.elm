@@ -10,6 +10,7 @@ import Set exposing (Set)
 import Dict exposing (Dict)
 import Http
 import WebSocket
+import Defer
 import Css exposing ((#))
 import Css.Elements
 import ParseInt exposing (toHex)
@@ -81,6 +82,7 @@ type alias Model =
     , stepState : StepState
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
+    , deferred : Defer.Model
     }
 
 
@@ -118,6 +120,7 @@ init =
             , stepState = Off
             , breakpoints = Set.empty
             , byteFormat = Byte.Hex
+            , deferred = (Defer.init [])
             }
     in
         ( model, Cmd.batch [ receiveScrollEventsForCommand "InstructionsContainer", receiveScrollEventsForCommand "HexEditorBody" ] )
@@ -148,6 +151,7 @@ type AppMessage
     | InstructionRequestFail Http.Error
     | ScrollEventReceived ScrollEvent
     | ScrollEventDecodeError String
+    | DeferMsg Defer.Msg
     | NoOp
 
 
@@ -187,9 +191,9 @@ update msg model =
             transitionStepState SingleStep ( model, Cmd.none )
 
         StepRequestSuccess resp ->
-         ( model, Cmd.none )
-            |> transitionStepState StepRequestSucceeded
-            |> scrollElementIntoView ( toString Instruction.CurrentInstruction )
+            ( model, Cmd.none )
+                |> transitionStepState StepRequestSucceeded
+                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
 
         StepRequestFail err ->
             ( model, Cmd.none )
@@ -209,8 +213,8 @@ update msg model =
             consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
 
         ScrollInstructionIntoViewClick ->
-            (model, Cmd.none)
-                |> scrollElementIntoView ( toString Instruction.CurrentInstruction )
+            ( model, Cmd.none )
+                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
 
         ScrollConsoleSucceed ->
             ( model, Cmd.none )
@@ -236,17 +240,35 @@ update msg model =
             ( model, Cmd.none )
                 |> consoleMessage ("ScrollDecodeError: " ++ err)
 
+        DeferMsg msg ->
+            let
+                ( deferModel, deferCmd ) =
+                    Defer.update msg model.deferred
+            in
+                ( { model | deferred = deferModel }, Cmd.map DeferMsg deferCmd )
+
         NoOp ->
             ( model, Cmd.none )
 
 
-scrollElementIntoView : String -> (Model, Cmd AppMessage) -> (Model, Cmd AppMessage)
-scrollElementIntoView class appInput =
+defer : Cmd Defer.Msg -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+defer cmd appInput =
     let
-        (inputMessage, inputCmd) =
+        ( inputModel, inputCmd ) =
             appInput
+
+        ( deferModel, deferCmd ) =
+            Defer.update (Defer.AddCmd cmd) inputModel.deferred
     in
-        ( inputMessage, Cmd.batch [ inputCmd, scrollElementIntoViewCommand class ] )
+        ( { inputModel | deferred = deferModel }, Cmd.batch [ inputCmd, Cmd.map DeferMsg deferCmd ] )
+
+
+scrollElementIntoView : String -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
+scrollElementIntoView class appInput =
+    appInput
+        |> defer (scrollElementIntoViewCommand class)
+        |> \( inputMessage, inputCmd ) ->
+            ( inputMessage, Cmd.batch [ inputCmd, scrollElementIntoViewCommand class ] )
 
 
 getNewStepState : StepState -> StepInput -> StepState
@@ -333,7 +355,6 @@ consoleMessage message appInput =
     Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message appInput
 
 
-
 handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd AppMessage ) -> ( Model, Cmd AppMessage )
 handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
@@ -392,13 +413,13 @@ handleBreakCondition breakReason snapshot appInput =
             appInput
                 |> consoleMessage ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc)
                 |> transitionStepState AutoStepOff
-                --|> scrollElementIntoView ( toString Instruction.CurrentInstruction )
+                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
 
         DebuggerCommand.Trap ->
             appInput
                 |> consoleMessage ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
                 |> transitionStepState AutoStepOff
-                --|> scrollElementIntoView ( toString Instruction.CurrentInstruction )
+                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
 
         _ ->
             appInput
@@ -410,6 +431,7 @@ subscriptions model =
         [ WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         , scrollEvent scrollEventMapper
+        , Defer.subscriptions model.deferred |> Sub.map DeferMsg
         ]
 
 
