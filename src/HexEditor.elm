@@ -38,13 +38,33 @@ startOffset =
 
 view : Model a -> Html msg
 view model =
-    table [ id HexEditor ]
-        [ thead []
-            [ tr []
-                (th [ class [ OffsetColumn ] ] [ text "Offset" ] :: (List.map (\offset -> th [] [ text <| offsetHeaderDisplay model.byteFormat offset ]) (List.range 0 (bytesPerRow - 1))))
+    let
+        offsetHeaderCells =
+            (th [ class [ OffsetColumn ] ] [ text "Offset" ]
+                :: ((bytesPerRow - 1)
+                        |> List.range 0
+                        |> List.map (\offset -> th [] [ text <| offsetHeaderDisplay model.byteFormat offset ])
+                   )
+            )
+    in
+        table [ id HexEditor ]
+            [ thead [] [ tr [] offsetHeaderCells ]
+            , tbody [] (intoRows model)
             ]
-        , tbody []
-            (List.map
+
+
+intoRows : Model a -> List (Html msg)
+intoRows model =
+    let
+        ( _, bytes ) =
+            model.memory
+    in
+        bytes
+            |> List.drop startOffset
+            |> List.take windowSize
+            |> List.Split.chunksOfLeft bytesPerRow
+            |> List.map2 (,) (List.range 0 (floor (windowSize / bytesPerRow)))
+            |> List.map
                 (\( rowOffset, row ) ->
                     tr [ class [ BytesRow ] ]
                         (td [ class [ OffsetColumn, RowOffset ] ] [ text <| offsetDisplay model.byteFormat (startOffset + (rowOffset * bytesPerRow)) ]
@@ -56,14 +76,6 @@ view model =
                                )
                         )
                 )
-                (List.map2 (,) (List.range 0 (floor (windowSize / bytesPerRow))) (intoRows model.memory))
-            )
-        ]
-
-
-intoRows : ( Int, List Int ) -> List (List Int)
-intoRows ( hash, bytes ) =
-    List.Split.chunksOfLeft bytesPerRow (bytes |> List.drop startOffset |> List.take windowSize)
 
 
 type CssIds

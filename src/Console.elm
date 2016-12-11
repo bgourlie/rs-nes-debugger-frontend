@@ -112,14 +112,15 @@ styles =
 view : Model a -> Html msg
 view { messages } =
     Html.ul [ id Console, class [ CssCommon.List ] ]
-        (List.map
-            (\( msg, repeats ) ->
-                Html.li []
-                    [ Html.span [] [ Html.text msg ]
-                    , Html.span [ messageRepeatsClasses repeats ] [ Html.text <| toString repeats ]
-                    ]
-            )
-            (List.reverse messages)
+        (messages
+            |> List.map
+                (\( msg, repeats ) ->
+                    Html.li []
+                        [ Html.span [] [ Html.text msg ]
+                        , Html.span [ messageRepeatsClasses repeats ] [ Html.text <| toString repeats ]
+                        ]
+                )
+            |> List.reverse
         )
 
 
