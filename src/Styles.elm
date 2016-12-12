@@ -12,6 +12,7 @@ import Icons
 import ToggleButton
 import HexEditor
 import Icons
+import ScrollBar
 import CssCommon
 import Colors
 
@@ -49,4 +50,5 @@ css =
             , ToggleButton.styles
             , HexEditor.styles
             , Icons.styles
+            , ScrollBar.styles
             ]

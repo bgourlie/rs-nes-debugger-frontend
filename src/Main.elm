@@ -1,4 +1,4 @@
-port module Main exposing (..)
+module Main exposing (..)
 
 import Html exposing (Html, Attribute, div, text, ul, li, button, header, input, fieldset)
 import Html.Attributes exposing (disabled, checked, type_, title)
@@ -11,13 +11,14 @@ import Dict exposing (Dict)
 import Http
 import WebSocket
 import Defer
-import Css exposing ((#))
+import Css exposing ((#), (.))
 import Css.Elements
 import ParseInt exposing (toHex)
 import CssCommon
 import DebuggerCommand exposing (BreakReason, DebuggerCommand(Break))
 import Instruction
 import CpuSnapshot exposing (CpuSnapshot)
+import Ports
 import ToggleBreakpoint
 import Continue
 import Registers
@@ -31,6 +32,16 @@ import ToggleButton
 import HexEditor
 import MemorySnapshot
 import Instruction
+import ScrollBar
+    exposing
+        ( CssClasses
+            ( ScrollBar
+            , ScrollBarHandle
+            , ScrollContentWrapper
+            , ScrollContainer
+            , ScrollInnerContainer
+            )
+        )
 
 
 { id, class, classList } =
@@ -52,21 +63,6 @@ main =
         }
 
 
-{-| Given a class name, scroll the first element with that class into view.
--}
-port scrollElementIntoViewCommand : String -> Cmd msg
-
-
-{-| Will report scroll events for the element with the given id back through the scrollEvents port.
--}
-port receiveScrollEventsForCommand : String -> Cmd msg
-
-
-{-| Report scroll events.
--}
-port scrollEvent : (Json.Encode.Value -> msg) -> Sub msg
-
-
 
 -- MODEL
 
@@ -83,12 +79,6 @@ type alias Model =
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
     , deferred : Defer.Model
-    }
-
-
-type alias ScrollEvent =
-    { elementId : String
-    , scrollPosition : Float
     }
 
 
@@ -123,7 +113,7 @@ init =
             , deferred = (Defer.init [])
             }
     in
-        ( model, Cmd.batch [ receiveScrollEventsForCommand "InstructionsContainer", receiveScrollEventsForCommand "HexEditorBody" ] )
+        ( model, Cmd.batch [ Ports.receiveScrollEventsForCommand "InstructionsContainer", Ports.receiveScrollEventsForCommand "HexEditorBody" ] )
 
 
 
@@ -149,7 +139,7 @@ type Msg
     | UpdateByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
-    | ScrollEventReceived ScrollEvent
+    | ScrollEventReceived Ports.ScrollEvent
     | ScrollEventDecodeError String
     | DeferMsg Defer.Msg
     | NoOp
@@ -159,13 +149,16 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ToggleAutoStepClicked ->
-            transitionStepState AutoStepToggle ( model, Cmd.none )
+            ( model, Cmd.none )
+                |> transitionStepState AutoStepToggle
 
         DebuggerCommandReceiveSuccess debuggerCommand ->
-            handleDebuggerCommand debuggerCommand ( model, Cmd.none )
+            ( model, Cmd.none )
+                |> handleDebuggerCommand debuggerCommand
 
         DebuggerCommandReceiveFail msg ->
-            consoleMessage ("Unable to receive debugger command: " ++ msg) ( model, Cmd.none )
+            ( model, Cmd.none )
+                |> consoleMessage ("Unable to receive debugger command: " ++ msg)
 
         ToggleBreakpointClick address ->
             ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
@@ -177,12 +170,12 @@ update msg model =
             consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
 
         StepClick ->
-            transitionStepState SingleStep ( model, Cmd.none )
+            ( model, Cmd.none )
+                |> transitionStepState SingleStep
 
         StepRequestSuccess resp ->
             ( model, Cmd.none )
                 |> transitionStepState StepRequestSucceeded
-                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
 
         StepRequestFail err ->
             ( model, Cmd.none )
@@ -255,9 +248,9 @@ defer cmd appInput =
 scrollElementIntoView : String -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 scrollElementIntoView class appInput =
     appInput
-        |> defer (scrollElementIntoViewCommand class)
+        |> defer (Ports.scrollElementIntoViewCommand class)
         |> \( inputMessage, inputCmd ) ->
-            ( inputMessage, Cmd.batch [ inputCmd, scrollElementIntoViewCommand class ] )
+            ( inputMessage, Cmd.batch [ inputCmd, Ports.scrollElementIntoViewCommand class ] )
 
 
 getNewStepState : StepState -> StepInput -> StepState
@@ -422,25 +415,9 @@ subscriptions model =
     Sub.batch
         [ WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
-        , scrollEvent scrollEventMapper
+        , Ports.scrollEvent <| Ports.mapScrollEvent ScrollEventDecodeError ScrollEventReceived
         , Defer.subscriptions model.deferred |> Sub.map DeferMsg
         ]
-
-
-scrollEventMapper : Json.Encode.Value -> Msg
-scrollEventMapper value =
-    let
-        decoder =
-            Json.Decode.map2 ScrollEvent
-                (Json.Decode.field "elementId" Json.Decode.string)
-                (Json.Decode.field "scrollPosition" Json.Decode.float)
-    in
-        case Json.Decode.decodeValue decoder value of
-            Ok scrollEvent ->
-                ScrollEventReceived scrollEvent
-
-            Err decodeError ->
-                ScrollEventDecodeError decodeError
 
 
 
@@ -461,8 +438,15 @@ view model =
             , Byte.toggleDisplayView UpdateByteFormat model
             ]
         , div [ id TwoColumn ]
-            [ div [ id InstructionsContainer ]
-                [ Instruction.view (\address -> ToggleBreakpointClick address) model
+            [ div [ id LeftColumn ]
+                [ div [ class [ ScrollContainer ] ]
+                    [ div [ class [ ScrollBar ] ]
+                        [ div [ class [ ScrollBarHandle ] ] []
+                        ]
+                    , div [ class [ ScrollInnerContainer ] ]
+                        [ Instruction.view (\address -> ToggleBreakpointClick address) model
+                        ]
+                    ]
                 ]
             , div [ id RightColumn ]
                 [ div [ id ConsoleContainer ]
@@ -490,7 +474,7 @@ type CssIds
     = Container
     | TwoColumn
     | DebuggerButtons
-    | InstructionsContainer
+    | LeftColumn
     | ConsoleContainer
     | HexEditorContainer
     | RightColumn
@@ -529,9 +513,8 @@ styles =
         , Css.minHeight (Css.px 0)
         , Css.minWidth (Css.px 0)
         ]
-    , (#) InstructionsContainer
+    , (#) LeftColumn
         [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
-        , Css.overflowY Css.auto
         ]
     , (#) RightColumn
         [ Css.displayFlex

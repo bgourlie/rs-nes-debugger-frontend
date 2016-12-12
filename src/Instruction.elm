@@ -148,7 +148,6 @@ styles =
         [ Css.fontFamilies [ "monospace" ]
         , Css.fontSize (Css.em 1.0)
         , Css.property "border-spacing" "0"
-        , Css.height (Css.pct 100)
         , Css.width (Css.pct 100)
         , Css.children
             [ (.) CurrentInstruction
