@@ -1,4 +1,4 @@
-module Toggle exposing (view, styles)
+module ToggleButton exposing (view, styles)
 
 import Html exposing (div, input, label, text, Html)
 import Html.Attributes exposing (type_)

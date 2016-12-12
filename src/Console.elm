@@ -5,6 +5,7 @@ import Dom
 import Dom.Scroll
 import Html exposing (Html)
 import Css
+import Css.Elements
 import CssCommon
 import Colors
 import Css exposing ((#), (.))
@@ -22,11 +23,14 @@ type alias Model a =
 -- TODO: break this up into smaller functions
 
 
-addMessage : Model a -> (Dom.Error -> msg) -> msg -> String -> ( Model a, Cmd msg )
-addMessage model failHandler successHandler message =
+addMessage : (Dom.Error -> msg) -> msg -> String -> ( Model a, Cmd msg ) -> ( Model a, Cmd msg )
+addMessage failHandler successHandler message appInput =
     let
+        ( inputModel, inputCmd ) =
+            appInput
+
         last =
-            List.head model.messages
+            List.head inputModel.messages
 
         ( messages, cmd ) =
             let
@@ -45,7 +49,7 @@ addMessage model failHandler successHandler message =
                         Nothing ->
                             ( message, 0 )
             in
-                case List.tail model.messages of
+                case List.tail inputModel.messages of
                     Just tail ->
                         let
                             ( _, newRepeats ) =
@@ -67,12 +71,12 @@ addMessage model failHandler successHandler message =
                                 in
                                     -- TODO: "ConsoleContainer" should be a toString of Main.ConsoleContainer
                                     -- refactor so we keep our compile time guarantees
-                                    ( newItem :: model.messages, Task.attempt result (Dom.Scroll.toBottom "ConsoleContainer") )
+                                    ( newItem :: inputModel.messages, Task.attempt result (Dom.Scroll.toBottom "ConsoleContainer") )
 
                     Nothing ->
-                        ( newItem :: model.messages, Cmd.none )
+                        ( newItem :: inputModel.messages, Cmd.none )
     in
-        ( { model | messages = messages }, cmd )
+        ( { inputModel | messages = messages }, Cmd.batch [ inputCmd, cmd ] )
 
 
 type CssIds
@@ -90,6 +94,11 @@ styles =
         [ Css.height (Css.pct 100)
         , Css.padding2 (Css.px 5) (Css.px 10)
         , Css.backgroundColor Colors.consoleBackground
+        , Css.descendants
+            [ Css.Elements.li
+                [ Css.paddingBottom (Css.em 0.2)
+                ]
+            ]
         ]
     , (.) MessageRepeats
         [ Css.display Css.inlineBlock
@@ -109,14 +118,15 @@ styles =
 view : Model a -> Html msg
 view { messages } =
     Html.ul [ id Console, class [ CssCommon.List ] ]
-        (List.map
-            (\( msg, repeats ) ->
-                Html.li []
-                    [ Html.span [] [ Html.text msg ]
-                    , Html.span [ messageRepeatsClasses repeats ] [ Html.text <| toString repeats ]
-                    ]
-            )
-            (List.reverse messages)
+        (messages
+            |> List.map
+                (\( msg, repeats ) ->
+                    Html.li []
+                        [ Html.span [] [ Html.text msg ]
+                        , Html.span [ messageRepeatsClasses repeats ] [ Html.text <| toString repeats ]
+                        ]
+                )
+            |> List.reverse
         )
 
 

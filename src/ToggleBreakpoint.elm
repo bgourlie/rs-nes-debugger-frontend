@@ -1,4 +1,6 @@
-module ToggleBreakpoint exposing (request, Model)
+module ToggleBreakpoint exposing (request, Message)
+
+--TODO: Move all this into the Breakpoint module
 
 import Task
 import Json.Decode
@@ -6,15 +8,15 @@ import Json.Decode exposing (Decoder, field)
 import Http
 
 
-type alias Model =
+type alias Message =
     { offset : Int
     , isSet : Bool
     }
 
 
-decoder : Decoder Model
+decoder : Decoder Message
 decoder =
-    Json.Decode.map2 Model
+    Json.Decode.map2 Message
         (field "offset" Json.Decode.int)
         (field "is_set" Json.Decode.bool)
 
@@ -24,7 +26,7 @@ endpoint address =
     "http://localhost:9975/toggle_breakpoint/" ++ toString address
 
 
-request : Int -> (Http.Error -> msg) -> (Model -> msg) -> Cmd msg
+request : Int -> (Http.Error -> msg) -> (Message -> msg) -> Cmd msg
 request address failHandler successHandler =
     let
         result =

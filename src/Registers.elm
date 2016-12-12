@@ -58,7 +58,7 @@ type alias Model a =
     { a
         | registers : Registers
         , cycles : Int
-        , byteDisplay : Byte.Display
+        , byteFormat : Byte.Format
     }
 
 
@@ -91,7 +91,7 @@ view model =
             model.registers
 
         display =
-            model.byteDisplay
+            model.byteFormat
 
         cycles =
             model.cycles
@@ -107,11 +107,11 @@ view model =
                 , th [] [ text "Cycles" ]
                 ]
             , tr []
-                [ td [] [ Byte.view display registers.pc ]
-                , td [] [ Byte.view display registers.sp ]
-                , td [] [ Byte.view display registers.acc ]
-                , td [] [ Byte.view display registers.x ]
-                , td [] [ Byte.view display registers.y ]
+                [ td [] [ Byte.view16 display registers.pc ]
+                , td [] [ Byte.view8 display registers.sp ]
+                , td [] [ Byte.view8 display registers.acc ]
+                , td [] [ Byte.view8 display registers.x ]
+                , td [] [ Byte.view8 display registers.y ]
                 , td [ title "Carry Flag" ] [ text <| "C" ++ flagDisplay (getCarry registers) ]
                 , td [ title "Zero Flag" ] [ text <| "Z" ++ flagDisplay (getZero registers) ]
                 , td [ title "Interrupt Flag" ] [ text <| "I" ++ flagDisplay (getInterrupt registers) ]

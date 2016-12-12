@@ -21,7 +21,7 @@ type AddressingMode
     | Accumulator
 
 
-view : Byte.Display -> AddressingMode -> Html msg
+view : Byte.Format -> AddressingMode -> Html msg
 view display am =
     case am of
         IndexedIndirect addr ->
@@ -58,7 +58,7 @@ view display am =
             span [] [ text "A" ]
 
 
-indexedIndirectView : Byte.Display -> Int -> Html msg
+indexedIndirectView : Byte.Format -> Int -> Html msg
 indexedIndirectView display addr =
     span []
         [ span [] [ text "(" ]
@@ -67,7 +67,7 @@ indexedIndirectView display addr =
         ]
 
 
-indirectIndexedView : Byte.Display -> Int -> Html msg
+indirectIndexedView : Byte.Format -> Int -> Html msg
 indirectIndexedView display addr =
     span []
         [ span [] [ text "(" ]
@@ -76,14 +76,14 @@ indirectIndexedView display addr =
         ]
 
 
-zeroPageView : Byte.Display -> Int -> Html msg
+zeroPageView : Byte.Format -> Int -> Html msg
 zeroPageView display addr =
     span []
         [ asmByteView display addr
         ]
 
 
-immediateView : Byte.Display -> Int -> Html msg
+immediateView : Byte.Format -> Int -> Html msg
 immediateView display addr =
     span []
         [ span [] [ text "#" ]
@@ -91,14 +91,14 @@ immediateView display addr =
         ]
 
 
-absoluteView : Byte.Display -> Int -> Html msg
+absoluteView : Byte.Format -> Int -> Html msg
 absoluteView display addr =
     span []
         [ asmByteView display addr
         ]
 
 
-zeroPageXView : Byte.Display -> Int -> Html msg
+zeroPageXView : Byte.Format -> Int -> Html msg
 zeroPageXView display addr =
     span []
         [ asmByteView display addr
@@ -106,7 +106,7 @@ zeroPageXView display addr =
         ]
 
 
-absoluteXView : Byte.Display -> Int -> Html msg
+absoluteXView : Byte.Format -> Int -> Html msg
 absoluteXView display addr =
     span []
         [ asmByteView display addr
@@ -114,7 +114,7 @@ absoluteXView display addr =
         ]
 
 
-absoluteYView : Byte.Display -> Int -> Html msg
+absoluteYView : Byte.Format -> Int -> Html msg
 absoluteYView display addr =
     span []
         [ asmByteView display addr
@@ -122,7 +122,7 @@ absoluteYView display addr =
         ]
 
 
-relativeView : Byte.Display -> Int -> Html msg
+relativeView : Byte.Format -> Int -> Html msg
 relativeView display addr =
     span []
         [ asmByteView display addr
@@ -133,7 +133,7 @@ relativeView display addr =
 -- We use a special byte for for 6502 assembly, which prefixes hex values with $ instead of 0x
 
 
-asmByteView : Byte.Display -> Int -> Html msg
+asmByteView : Byte.Format -> Int -> Html msg
 asmByteView display byte =
     let
         str =

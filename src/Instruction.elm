@@ -1,8 +1,10 @@
-module Instruction exposing (view, styles, decoder, Instruction, CssIds(CurrentInstruction))
+module Instruction exposing (view, styles, decoder, request, Instruction, OffsetMap, CssIds(CurrentInstruction))
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
+import Http
 import List exposing (map, map2)
+import Dict exposing (Dict)
 import Svg exposing (svg)
 import Svg.Attributes
 import Json.Decode as Json exposing (Decoder, field)
@@ -29,21 +31,49 @@ type alias Instruction =
     }
 
 
+type alias OffsetMap =
+    Dict Int Int
+
+
 type alias Model a =
     { a
         | instructions : List Instruction
+        , instructionsDisplayed : Int
+        , instructionOffsetMap : OffsetMap
         , registers : Registers.Registers
         , breakpoints : Breakpoints.Breakpoints
-        , byteDisplay : Byte.Display
+        , byteFormat : Byte.Format
     }
 
 
-decoder : Decoder Instruction
+decoder : Decoder (List Instruction)
 decoder =
-    Json.map3 Instruction
-        (field "mnemonic" Json.string)
-        (field "addressing_mode" AddressingMode.decoder)
-        (field "offset" Json.int)
+    Json.list <|
+        Json.map3 Instruction
+            (field "mnemonic" Json.string)
+            (field "addressing_mode" AddressingMode.decoder)
+            (field "offset" Json.int)
+
+
+endpoint : String
+endpoint =
+    "http://localhost:9975/instructions"
+
+
+request : (Http.Error -> msg) -> (List Instruction -> msg) -> Cmd msg
+request failHandler successHandler =
+    let
+        result =
+            (\r ->
+                case r of
+                    Ok r ->
+                        successHandler r
+
+                    Err e ->
+                        failHandler e
+            )
+    in
+        Http.send result (Http.get endpoint decoder)
 
 
 view : (Int -> msg) -> Model a -> Html msg
@@ -55,30 +85,47 @@ view breakpointClickHandler model =
         instructions =
             model.instructions
 
+        instructionOffsetMap =
+            model.instructionOffsetMap
+
         breakpoints =
             model.breakpoints
 
-        byteDisplay =
-            model.byteDisplay
+        byteFormat =
+            model.byteFormat
+
+        instructionsDisplayed =
+            model.instructionsDisplayed
+
+        halfWindowSize =
+            floor <| (toFloat instructionsDisplayed) / 2.0
+
+        pivotIndex =
+            Maybe.withDefault 0 (Dict.get pc instructionOffsetMap)
+
+        instructionsToDrop =
+            max 0 (pivotIndex - halfWindowSize)
     in
         Html.table [ id Instructions ]
-            (map
-                (\instruction ->
-                    Html.tr (currentInstructionAttrs instruction.offset pc)
-                        [ Html.td [ class [ Gutter ] ]
-                            [ Html.div [ class [ MemoryLocation ] ] [ Byte.view byteDisplay instruction.offset ]
-                            , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
-                                [ Icons.breakpoint
+            (instructions
+                |> List.drop instructionsToDrop
+                |> List.take instructionsDisplayed
+                |> map
+                    (\instruction ->
+                        Html.tr (currentInstructionAttrs instruction.offset pc)
+                            [ Html.td [ class [ Gutter ] ]
+                                [ Html.div [ class [ MemoryLocation ] ] [ Byte.view16 byteFormat instruction.offset ]
+                                , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
+                                    [ Icons.breakpoint
+                                    ]
+                                ]
+                            , Html.td []
+                                [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
+                                , Html.span [] [ Html.text " " ]
+                                , Html.span [ class [ Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
                                 ]
                             ]
-                        , Html.td []
-                            [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
-                            , Html.span [] [ Html.text " " ]
-                            , Html.span [ class [ Operand ] ] [ AddressingMode.view byteDisplay instruction.addressingMode ]
-                            ]
-                        ]
-                )
-                instructions
+                    )
             )
 
 
@@ -123,11 +170,19 @@ styles =
         ]
     , (.) BreakpointHitBox
         [ Css.display Css.inlineBlock
-        , Css.paddingLeft (Css.em 0.5)
+        , Css.property "transition" "opacity .15s"
+        , Css.paddingLeft (Css.em 0.6)
         , Css.opacity (Css.num 0)
+        , Css.cursor Css.pointer
+        , Css.hover
+            [ Css.opacity (Css.num 0.2)
+            ]
         ]
     , (.) BreakpointOn
         [ Css.opacity (Css.num 1.0)
+        , Css.hover
+            [ Css.opacity (Css.num 1.0)
+            ]
         ]
     , (.) Mnemonic
         [ Css.color Colors.mnemonic

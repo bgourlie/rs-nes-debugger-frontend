@@ -9,8 +9,9 @@ import Instruction
 import Console
 import Byte
 import Icons
-import Toggle
+import ToggleButton
 import HexEditor
+import Icons
 import CssCommon
 import Colors
 
@@ -45,6 +46,7 @@ css =
             , Instruction.styles
             , Console.styles
             , Byte.styles
-            , Toggle.styles
+            , ToggleButton.styles
             , HexEditor.styles
+            , Icons.styles
             ]
