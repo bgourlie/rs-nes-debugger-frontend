@@ -35,7 +35,7 @@ function rsNesHandleScrollEventHandler(e) {
                 const scrollPercentage = element.scrollTop / (element.scrollHeight-element.clientHeight);
                 const model = {
                     elementId: element.id,
-                    scrollPosition: scrollPercentage
+                    positionY: scrollPercentage
                 }
 
                 app.ports.scrollEvent.send(model);

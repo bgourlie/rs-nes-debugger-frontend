@@ -21,7 +21,7 @@ port scrollEvent : (Json.Encode.Value -> msg) -> Sub msg
 
 type alias ScrollEvent =
     { elementId : String
-    , scrollPosition : Float
+    , positionY : Float
     }
 
 
@@ -31,7 +31,7 @@ mapScrollEvent failHandler successHandler value =
         decoder =
             Json.Decode.map2 ScrollEvent
                 (Json.Decode.field "elementId" Json.Decode.string)
-                (Json.Decode.field "scrollPosition" Json.Decode.float)
+                (Json.Decode.field "positionY" Json.Decode.float)
     in
         case Json.Decode.decodeValue decoder value of
             Ok scrollEvent ->

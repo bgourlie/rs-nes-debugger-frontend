@@ -4,14 +4,14 @@ import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
 import Html.Attributes exposing (title, colspan)
 import Bitwise exposing (and)
 import Json.Decode as Json exposing (Decoder, field)
-import Css exposing ((#))
+import Css
 import Css.Elements
-import CssCommon
+import Styles
 import Byte
 
 
 { id, class, classList } =
-    CssCommon.helpers
+    Styles.helpers
 
 
 getCarry : Registers -> Bool
@@ -96,7 +96,7 @@ view model =
         cycles =
             model.cycles
     in
-        table [ id RegistersTable ]
+        table [ id Styles.RegistersTable ]
             [ tr []
                 [ th [ title "Program Counter" ] [ text "PC" ]
                 , th [ title "Stack Pointer" ] [ text "SP" ]
@@ -123,11 +123,6 @@ view model =
             ]
 
 
-type CssIds
-    = RegistersTable
-    | Cycles
-
-
 flagDisplay : Bool -> String
 flagDisplay val =
     if val then
@@ -137,7 +132,7 @@ flagDisplay val =
 
 
 styles =
-    [ (#) RegistersTable
+    [ Styles.id Styles.RegistersTable
         [ Css.descendants
             [ Css.Elements.th
                 [ Css.width (Css.ch 6)

@@ -1,17 +1,17 @@
-module Instruction exposing (view, styles, decoder, request, Instruction, OffsetMap, CssIds(CurrentInstruction))
+module Instruction exposing (view, styles, decoder, request, Instruction, OffsetMap)
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
 import Http
-import List exposing (map, map2)
+import List
 import Dict exposing (Dict)
 import Svg exposing (svg)
 import Svg.Attributes
 import Json.Decode as Json exposing (Decoder, field)
 import ParseInt exposing (toHex)
-import Css exposing ((#), (.))
+import Css
 import Css.Elements as CssElem
-import CssCommon
+import Styles
 import Registers
 import Byte
 import Breakpoints
@@ -21,7 +21,7 @@ import Colors
 
 
 { id, class, classList } =
-    CssCommon.helpers
+    Styles.helpers
 
 
 type alias Instruction =
@@ -106,56 +106,42 @@ view breakpointClickHandler model =
         instructionsToDrop =
             max 0 (pivotIndex - halfWindowSize)
     in
-        Html.table [ id Instructions ]
+        Html.table [ class [ Styles.Instructions ] ]
             (instructions
                 |> List.drop instructionsToDrop
                 |> List.take instructionsDisplayed
-                |> map
+                |> List.map
                     (\instruction ->
-                        Html.tr (currentInstructionAttrs instruction.offset pc)
-                            [ Html.td [ class [ Gutter ] ]
-                                [ Html.div [ class [ MemoryLocation ] ] [ Byte.view16 byteFormat instruction.offset ]
-                                , Html.div [ breakpointClass breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
+                        Html.tr ([ classList [ ( Styles.CurrentInstruction, instruction.offset == pc ) ] ])
+                            [ Html.td [ class [ Styles.Gutter ] ]
+                                [ Html.div [ class [ Styles.MemoryLocation ] ] [ Byte.view16 byteFormat instruction.offset ]
+                                , Html.div [ breakpointClasses breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
                                     [ Icons.breakpoint
                                     ]
                                 ]
                             , Html.td []
-                                [ Html.span [ class [ Mnemonic ] ] [ Html.text instruction.mnemonic ]
+                                [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text instruction.mnemonic ]
                                 , Html.span [] [ Html.text " " ]
-                                , Html.span [ class [ Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
+                                , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
                                 ]
                             ]
                     )
             )
 
 
-type CssIds
-    = Instructions
-    | CurrentInstruction
-
-
-type CssClasses
-    = Gutter
-    | BreakpointHitBox
-    | BreakpointOn
-    | MemoryLocation
-    | Mnemonic
-    | Operand
-
-
 styles =
-    [ (#) Instructions
+    [ Styles.class Styles.Instructions
         [ Css.fontFamilies [ "monospace" ]
         , Css.fontSize (Css.em 1.0)
         , Css.property "border-spacing" "0"
         , Css.width (Css.pct 100)
         , Css.children
-            [ (.) CurrentInstruction
+            [ Styles.class Styles.CurrentInstruction
                 [ Css.backgroundColor Colors.currentLine
                 ]
             ]
         ]
-    , (.) Gutter
+    , Styles.class Styles.Gutter
         [ Css.color Colors.lineNumber
         , Css.backgroundColor Colors.gutterBackground
         , Css.borderRight3 (Css.px 1) Css.solid Colors.gutterBorder
@@ -164,10 +150,10 @@ styles =
         , Css.whiteSpace Css.noWrap
         , Css.property "user-select" "none"
         ]
-    , (.) MemoryLocation
+    , Styles.class Styles.MemoryLocation
         [ Css.display Css.inlineBlock
         ]
-    , (.) BreakpointHitBox
+    , Styles.class Styles.BreakpointHitBox
         [ Css.display Css.inlineBlock
         , Css.property "transition" "opacity .15s"
         , Css.paddingLeft (Css.em 0.6)
@@ -177,28 +163,18 @@ styles =
             [ Css.opacity (Css.num 0.2)
             ]
         ]
-    , (.) BreakpointOn
+    , Styles.class Styles.BreakpointOn
         [ Css.opacity (Css.num 1.0)
         , Css.hover
             [ Css.opacity (Css.num 1.0)
             ]
         ]
-    , (.) Mnemonic
+    , Styles.class Styles.Mnemonic
         [ Css.color Colors.mnemonic
         , Css.paddingLeft (Css.em 0.5)
         ]
     ]
 
 
-currentInstructionAttrs address pc =
-    if address == pc then
-        [ class [ CurrentInstruction ] ]
-    else
-        []
-
-
-breakpointClass breakpoints offset =
-    if Breakpoints.isSet breakpoints offset then
-        class [ BreakpointHitBox, BreakpointOn ]
-    else
-        class [ BreakpointHitBox ]
+breakpointClasses breakpoints offset =
+    classList [ ( Styles.BreakpointHitBox, True ), ( Styles.BreakpointOn, Breakpoints.isSet breakpoints offset ) ]

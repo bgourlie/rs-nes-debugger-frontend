@@ -4,17 +4,14 @@ import Html exposing (Html, Attribute, div, text, ul, li, button, header, input,
 import Html.Attributes exposing (disabled, checked, type_, title)
 import Html.Events exposing (onClick)
 import Dom
-import Json.Encode
-import Json.Decode
 import Set exposing (Set)
 import Dict exposing (Dict)
 import Http
 import WebSocket
 import Defer
-import Css exposing ((#), (.))
+import Css
 import Css.Elements
 import ParseInt exposing (toHex)
-import CssCommon
 import DebuggerCommand exposing (BreakReason, DebuggerCommand(Break))
 import Instruction
 import CpuSnapshot exposing (CpuSnapshot)
@@ -32,20 +29,12 @@ import ToggleButton
 import HexEditor
 import MemorySnapshot
 import Instruction
-import ScrollBar
-    exposing
-        ( CssClasses
-            ( ScrollBar
-            , ScrollBarHandle
-            , ScrollContentWrapper
-            , ScrollContainer
-            , ScrollInnerContainer
-            )
-        )
+import ScrollBars
+import Styles
 
 
 { id, class, classList } =
-    CssCommon.helpers
+    Styles.helpers
 
 
 wsDebuggerEndpoint : String
@@ -79,6 +68,7 @@ type alias Model =
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
     , deferred : Defer.Model
+    , scrollBars : ScrollBars.Model
     }
 
 
@@ -99,6 +89,9 @@ type StepInput
 init : ( Model, Cmd Msg )
 init =
     let
+        ( scrollBarsModel, scrollBarsCmd ) =
+            ScrollBars.init [ Styles.InstructionsContainer, Styles.HexEditorBody ]
+
         model =
             { messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
@@ -111,9 +104,10 @@ init =
             , breakpoints = Set.empty
             , byteFormat = Byte.Hex
             , deferred = (Defer.init [])
+            , scrollBars = scrollBarsModel
             }
     in
-        ( model, Cmd.batch [ Ports.receiveScrollEventsForCommand "InstructionsContainer", Ports.receiveScrollEventsForCommand "HexEditorBody" ] )
+        ( model, Cmd.batch [ scrollBarsCmd ] )
 
 
 
@@ -142,6 +136,7 @@ type Msg
     | ScrollEventReceived Ports.ScrollEvent
     | ScrollEventDecodeError String
     | DeferMsg Defer.Msg
+    | ScrollBarsMsg ScrollBars.Msg
     | NoOp
 
 
@@ -196,7 +191,7 @@ update msg model =
 
         ScrollInstructionIntoViewClick ->
             ( model, Cmd.none )
-                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
+                |> scrollElementIntoView (toString Styles.CurrentInstruction)
 
         ScrollConsoleSucceed ->
             ( model, Cmd.none )
@@ -221,6 +216,13 @@ update msg model =
         ScrollEventDecodeError err ->
             ( model, Cmd.none )
                 |> consoleMessage ("ScrollDecodeError: " ++ err)
+
+        ScrollBarsMsg msg ->
+            let
+                ( scrollBarsModel, scrollBarsCmd ) =
+                    ScrollBars.update msg model.scrollBars
+            in
+                ( { model | scrollBars = scrollBarsModel }, Cmd.map ScrollBarsMsg scrollBarsCmd )
 
         DeferMsg msg ->
             let
@@ -398,13 +400,11 @@ handleBreakCondition breakReason snapshot appInput =
             appInput
                 |> consoleMessage ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc)
                 |> transitionStepState AutoStepOff
-                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
 
         DebuggerCommand.Trap ->
             appInput
                 |> consoleMessage ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
                 |> transitionStepState AutoStepOff
-                |> scrollElementIntoView (toString Instruction.CurrentInstruction)
 
         _ ->
             appInput
@@ -417,6 +417,7 @@ subscriptions model =
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         , Ports.scrollEvent <| Ports.mapScrollEvent ScrollEventDecodeError ScrollEventReceived
         , Defer.subscriptions model.deferred |> Sub.map DeferMsg
+        , ScrollBars.subscriptions model.scrollBars |> Sub.map ScrollBarsMsg
         ]
 
 
@@ -426,33 +427,33 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    div [ id Container ]
+    div [ id Styles.Container ]
         [ header []
             [ Registers.view model
-            , div [ id DebuggerButtons ]
-                [ button [ class [ CssCommon.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
-                , button [ class [ CssCommon.Button ], onClick StepClick, disabled <| autoStepEnabled model, title "Step" ] [ Icons.step ]
-                , button [ class [ CssCommon.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
+            , div [ id Styles.DebuggerButtons ]
+                [ button [ class [ Styles.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
+                , button [ class [ Styles.Button ], onClick StepClick, disabled <| autoStepEnabled model, title "Step" ] [ Icons.step ]
+                , button [ class [ Styles.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
                 , ToggleButton.view ToggleAutoStepClicked "autoStepToggle" "Autostep" (autoStepEnabled model)
                 ]
             , Byte.toggleDisplayView UpdateByteFormat model
             ]
-        , div [ id TwoColumn ]
-            [ div [ id LeftColumn ]
-                [ div [ class [ ScrollContainer ] ]
-                    [ div [ class [ ScrollBar ] ]
-                        [ div [ class [ ScrollBarHandle ] ] []
+        , div [ id Styles.TwoColumn ]
+            [ div [ id Styles.LeftColumn ]
+                [ div [ class [ Styles.ScrollContainer ] ]
+                    [ div [ class [ Styles.ScrollBar ] ]
+                        [ div [ class [ Styles.ScrollBarHandle ] ] []
                         ]
-                    , div [ class [ ScrollInnerContainer ] ]
+                    , div [ id Styles.InstructionsContainer, class [ Styles.ScrollInnerContainer ] ]
                         [ Instruction.view (\address -> ToggleBreakpointClick address) model
                         ]
                     ]
                 ]
-            , div [ id RightColumn ]
-                [ div [ id ConsoleContainer ]
+            , div [ id Styles.RightColumn ]
+                [ div [ id Styles.ConsoleContainer ]
                     [ Console.view model
                     ]
-                , div [ id HexEditorContainer ]
+                , div [ id Styles.HexEditorContainer ]
                     [ HexEditor.view model
                     ]
                 ]
@@ -470,19 +471,9 @@ autoStepEnabled model =
             False
 
 
-type CssIds
-    = Container
-    | TwoColumn
-    | DebuggerButtons
-    | LeftColumn
-    | ConsoleContainer
-    | HexEditorContainer
-    | RightColumn
-
-
 styles : List Css.Snippet
 styles =
-    [ (#) Container
+    [ Styles.id Styles.Container
         [ Css.displayFlex
         , Css.flexDirection Css.column
         , Css.height (Css.vh 100)
@@ -506,35 +497,35 @@ styles =
                 ]
             ]
         ]
-    , (#) TwoColumn
+    , Styles.id Styles.TwoColumn
         [ Css.displayFlex
         , Css.flexDirection Css.row
         , Css.property "flex" "1 1 auto"
         , Css.minHeight (Css.px 0)
         , Css.minWidth (Css.px 0)
         ]
-    , (#) LeftColumn
+    , Styles.id Styles.LeftColumn
         [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
         ]
-    , (#) RightColumn
+    , Styles.id Styles.RightColumn
         [ Css.displayFlex
         , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
         , Css.flexDirection Css.column
         , Css.overflow Css.auto
         ]
-    , (#) ConsoleContainer
+    , Styles.id Styles.ConsoleContainer
         [ Css.overflowY Css.auto
         , Css.backgroundColor Colors.consoleBackground
         , Css.displayFlex
         , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
         ]
-    , (#) HexEditorContainer
+    , Styles.id Styles.HexEditorContainer
         [ Css.displayFlex
         , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
         , Css.overflowY Css.auto
         , Css.position Css.relative
         ]
-    , (#) DebuggerButtons
+    , Styles.id Styles.DebuggerButtons
         [ Css.children
             [ Css.everything
                 [ Css.marginLeft (Css.px 5)
