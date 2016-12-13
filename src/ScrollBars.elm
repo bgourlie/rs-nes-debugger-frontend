@@ -4,6 +4,7 @@ import Ports
 import Css
 import Dict exposing (Dict)
 import Styles
+import Debug
 
 
 type alias Model =
@@ -53,7 +54,7 @@ update msg model =
         ScrollEventReceived e ->
             model
                 |> Dict.update e.elementId (Maybe.andThen (\oldProps -> Just { oldProps | positionY = e.positionY }))
-                |> \newModel -> ( newModel, Cmd.none )
+                |> \newModel -> ( (Debug.log "scrollbars event" newModel), Cmd.none )
 
         ScrollEventDecodeFail err ->
             ( model, Cmd.none )
@@ -80,16 +81,16 @@ styles =
                         , Css.height (Css.px 63)
                         , Css.backgroundColor (Css.hex "#FFFF00")
                         ]
-                    , Styles.class Styles.ScrollInnerContainer
+                    ]
+                ]
+            , Styles.class Styles.ScrollInnerContainer
+                [ Css.height (Css.pct 100)
+                , Css.overflowX Css.hidden
+                , Css.overflowY Css.scroll
+                , Css.children
+                    [ Styles.class Styles.ScrollContentWrapper
                         [ Css.height (Css.pct 100)
-                        , Css.overflowX Css.hidden
-                        , Css.overflowY Css.scroll
-                        , Css.children
-                            [ Styles.class Styles.ScrollContentWrapper
-                                [ Css.height (Css.pct 100)
-                                , Css.overflowY Css.visible
-                                ]
-                            ]
+                        , Css.overflowY Css.visible
                         ]
                     ]
                 ]
