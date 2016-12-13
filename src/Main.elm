@@ -187,7 +187,8 @@ update msg model =
             ( model, Cmd.none )
 
         ContinueRequestFail err ->
-            consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
+            ( model, Cmd.none )
+                |> consoleMessage ("Continue request fail: " ++ toString err)
 
         ScrollInstructionIntoViewClick ->
             ( model, Cmd.none )
@@ -208,7 +209,8 @@ update msg model =
                 |> handleInstructionsResponse instructions
 
         InstructionRequestFail err ->
-            consoleMessage ("Continue request fail: " ++ toString err) ( model, Cmd.none )
+            ( model, Cmd.none )
+                |> consoleMessage ("Continue request fail: " ++ toString err)
 
         ScrollEventReceived e ->
             ( model, Cmd.none )
