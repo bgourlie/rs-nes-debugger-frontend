@@ -1,18 +1,18 @@
 module Console exposing (styles, view, addMessage)
 
 import Task exposing (Task)
+import Css
 import Dom
 import Dom.Scroll
 import Html exposing (Html)
 import Css
 import Css.Elements
-import CssCommon
+import Styles
 import Colors
-import Css exposing ((#), (.))
 
 
 { id, class, classList } =
-    CssCommon.helpers
+    Styles.helpers
 
 
 type alias Model a =
@@ -69,9 +69,7 @@ addMessage failHandler successHandler message appInput =
                                                     failHandler e
                                         )
                                 in
-                                    -- TODO: "ConsoleContainer" should be a toString of Main.ConsoleContainer
-                                    -- refactor so we keep our compile time guarantees
-                                    ( newItem :: inputModel.messages, Task.attempt result (Dom.Scroll.toBottom "ConsoleContainer") )
+                                    ( newItem :: inputModel.messages, Task.attempt result (Dom.Scroll.toBottom <| toString Styles.ConsoleContainer) )
 
                     Nothing ->
                         ( newItem :: inputModel.messages, Cmd.none )
@@ -79,18 +77,9 @@ addMessage failHandler successHandler message appInput =
         ( { inputModel | messages = messages }, Cmd.batch [ inputCmd, cmd ] )
 
 
-type CssIds
-    = Console
-
-
-type CssClasses
-    = MessageRepeats
-    | MessageRepeatsShow
-
-
 styles : List Css.Snippet
 styles =
-    [ (#) Console
+    [ Styles.id Styles.Console
         [ Css.height (Css.pct 100)
         , Css.padding2 (Css.px 5) (Css.px 10)
         , Css.backgroundColor Colors.consoleBackground
@@ -100,7 +89,7 @@ styles =
                 ]
             ]
         ]
-    , (.) MessageRepeats
+    , Styles.class Styles.MessageRepeats
         [ Css.display Css.inlineBlock
         , Css.marginLeft (Css.em 0.5)
         , Css.padding2 (Css.em 0.075) (Css.em 0.25)
@@ -109,7 +98,7 @@ styles =
         , Css.fontSize (Css.pct 80)
         , Css.property "visibility" "hidden"
         ]
-    , (.) MessageRepeatsShow
+    , Styles.class Styles.MessageRepeatsShow
         [ Css.property "visibility" "visible"
         ]
     ]
@@ -117,7 +106,7 @@ styles =
 
 view : Model a -> Html msg
 view { messages } =
-    Html.ul [ id Console, class [ CssCommon.List ] ]
+    Html.ul [ id Styles.Console, class [ Styles.List ] ]
         (messages
             |> List.map
                 (\( msg, repeats ) ->
@@ -132,6 +121,6 @@ view { messages } =
 
 messageRepeatsClasses repeats =
     if repeats > 0 then
-        class [ MessageRepeats, MessageRepeatsShow ]
+        class [ Styles.MessageRepeats, Styles.MessageRepeatsShow ]
     else
-        class [ MessageRepeats ]
+        class [ Styles.MessageRepeats ]

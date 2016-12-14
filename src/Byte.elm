@@ -4,13 +4,13 @@ import Html exposing (Html, Attribute, div, text, input, header, span, label)
 import Html.Attributes exposing (disabled, checked, type_, name)
 import Html.Events exposing (onClick)
 import ParseInt exposing (toHex)
-import Css exposing ((#))
+import Css
 import Css.Elements
-import CssCommon
+import Styles
 
 
 { id, class, classList } =
-    CssCommon.helpers
+    Styles.helpers
 
 
 type alias Byte =
@@ -58,10 +58,10 @@ view16 display byte =
 
 toggleDisplayView : (Format -> msg) -> Model a -> Html msg
 toggleDisplayView updateDisplayHandler model =
-    div [ id ByteFormatToggle ]
+    div [ id Styles.ByteFormatToggle ]
         [ label []
             [ input
-                [ name <| toString ByteFormatToggle
+                [ name <| toString Styles.ByteFormatToggle
                 , type_ "radio"
                 , onClick <| updateDisplayHandler Hex
                 , checked <| isSelected Hex model
@@ -71,7 +71,7 @@ toggleDisplayView updateDisplayHandler model =
             ]
         , label []
             [ input
-                [ name <| toString ByteFormatToggle
+                [ name <| toString Styles.ByteFormatToggle
                 , type_ "radio"
                 , onClick <| updateDisplayHandler Dec
                 , checked <| isSelected Dec model
@@ -89,7 +89,7 @@ isSelected display model =
 
 styles : List Css.Snippet
 styles =
-    [ (#) ByteFormatToggle
+    [ Styles.id Styles.ByteFormatToggle
         [ Css.verticalAlign Css.top
         , Css.children
             [ Css.Elements.label
@@ -98,7 +98,3 @@ styles =
             ]
         ]
     ]
-
-
-type CssIds
-    = ByteFormatToggle

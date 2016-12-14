@@ -3,31 +3,31 @@ module ToggleButton exposing (view, styles)
 import Html exposing (div, input, label, text, Html)
 import Html.Attributes exposing (type_)
 import Html.Events exposing (onClick)
-import Css exposing ((.))
+import Css
 import Css.Elements
-import CssCommon
+import Styles
 import Colors
 
 
 { id, class, classList } =
-    CssCommon.helpers
+    Styles.helpers
 
 
 view : msg -> String -> String -> Bool -> Html msg
 view clickHandler id lbl checked =
-    div [ class [ Toggle ] ]
+    div [ class [ Styles.Toggle ] ]
         [ div []
             [ input [ Html.Attributes.id id, type_ "checkbox", Html.Attributes.checked checked ] []
             , label [ Html.Attributes.for id, onClick clickHandler ] []
             ]
-        , div [ class [ ToggleLabel ] ]
+        , div [ class [ Styles.ToggleLabel ] ]
             [ text lbl
             ]
         ]
 
 
 styles =
-    [ (.) Toggle
+    [ Styles.class Styles.Toggle
         [ Css.display Css.inlineBlock
         , Css.textAlign Css.center
         , Css.children
@@ -76,12 +76,7 @@ styles =
                 ]
             ]
         ]
-    , (.) ToggleLabel
+    , Styles.class Styles.ToggleLabel
         [ Css.fontSize (Css.pct 80)
         ]
     ]
-
-
-type CssClasses
-    = Toggle
-    | ToggleLabel

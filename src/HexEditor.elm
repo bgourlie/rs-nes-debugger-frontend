@@ -5,16 +5,16 @@ import List
 import ParseInt exposing (toHex)
 import List.Split
 import Bitwise
-import Css exposing ((#), (.))
+import Css
 import Css.Elements
-import CssCommon
+import Styles
 import Colors
 import Byte
 import MemorySnapshot
 
 
 { id, class, classList } =
-    CssCommon.helpers
+    Styles.helpers
 
 
 type alias Model a =
@@ -40,16 +40,16 @@ view : Model a -> Html msg
 view model =
     let
         offsetHeaderCells =
-            (th [ class [ OffsetColumn ] ] [ text "Offset" ]
+            (th [ class [ Styles.OffsetColumn ] ] [ text "Offset" ]
                 :: ((bytesPerRow - 1)
                         |> List.range 0
                         |> List.map (\offset -> th [] [ text <| offsetHeaderDisplay model.byteFormat offset ])
                    )
             )
     in
-        table [ id HexEditor ]
+        table [ id Styles.HexEditor ]
             [ thead [] [ tr [] offsetHeaderCells ]
-            , tbody [ id HexEditorBody ] (intoRows model)
+            , tbody [ id Styles.HexEditorBody ] (intoRows model)
             ]
 
 
@@ -66,8 +66,8 @@ intoRows model =
             |> List.map2 (,) (List.range 0 (floor (windowSize / bytesPerRow)))
             |> List.map
                 (\( rowOffset, row ) ->
-                    tr [ class [ BytesRow ] ]
-                        (td [ class [ OffsetColumn, RowOffset ] ] [ Byte.view16 model.byteFormat (startOffset + (rowOffset * bytesPerRow)) ]
+                    tr [ class [ Styles.BytesRow ] ]
+                        (td [ class [ Styles.OffsetColumn, Styles.RowOffset ] ] [ Byte.view16 model.byteFormat (startOffset + (rowOffset * bytesPerRow)) ]
                             :: (List.map
                                     (\byte ->
                                         td [] [ text <| String.padLeft 2 '0' (toHex byte) ]
@@ -76,17 +76,6 @@ intoRows model =
                                )
                         )
                 )
-
-
-type CssIds
-    = HexEditor
-    | HexEditorBody
-
-
-type CssClasses
-    = RowOffset
-    | OffsetColumn
-    | BytesRow
 
 
 offsetHeaderDisplay : Byte.Format -> Int -> String
@@ -101,7 +90,7 @@ offsetHeaderDisplay display val =
 
 styles : List Css.Snippet
 styles =
-    [ (#) HexEditor
+    [ Styles.id Styles.HexEditor
         [ Css.displayFlex
         , Css.flexDirection Css.column
         , Css.position Css.absolute
@@ -122,16 +111,16 @@ styles =
                 ]
             ]
         ]
-    , (.) RowOffset
+    , Styles.class Styles.RowOffset
         [ Css.fontWeight Css.bold
         , Css.color Colors.hexEditorOffsetColor
         , Css.property "user-select" "none"
         ]
-    , (.) OffsetColumn
+    , Styles.class Styles.OffsetColumn
         [ Css.width (Css.ch 8)
         , Css.textAlign Css.left
         ]
-    , (.) BytesRow
+    , Styles.class Styles.BytesRow
         [ Css.color Colors.hexEditorByte
         ]
     ]
