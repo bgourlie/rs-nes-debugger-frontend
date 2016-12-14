@@ -5,7 +5,6 @@ require('./src/Stylesheets');
 const Elm = require('./src/Main');
 
 const app = Elm.Main.fullscreen();
-const scrollEventElements = [];
 
 app.ports.scrollElementIntoViewCommand.subscribe(function(cls) {
     const elem = document.getElementsByClassName(cls)[0];
@@ -17,7 +16,6 @@ app.ports.scrollElementIntoViewCommand.subscribe(function(cls) {
 app.ports.receiveScrollEventsForCommand.subscribe(function(elemId) {
     const elem = document.getElementById(elemId);
     if (elem) {
-        scrollEventElements[elemId] = { lastKnownScrollPosition: 0, ticking: false }
         console.log("receiving scroll events for " + elemId)
         elem.addEventListener('scroll', rsNesHandleScrollEventHandler);
     } else {
@@ -25,12 +23,11 @@ app.ports.receiveScrollEventsForCommand.subscribe(function(elemId) {
     }
 });
 
+let rsNesTicking = false;
+
 function rsNesHandleScrollEventHandler(e) {
     const element = e.target;
-    const elemInfo = scrollEventElements[element.id]
-    if (elemInfo) {
-        elemInfo.lastKnownScrollPosition = element.scrollY;
-        if (!elemInfo.ticking) {
+        if (!rsNesTicking) {
             window.requestAnimationFrame(function() {
                 const scrollPercentage = element.scrollTop / (element.scrollHeight-element.clientHeight);
                 const model = {
@@ -39,9 +36,8 @@ function rsNesHandleScrollEventHandler(e) {
                 }
 
                 app.ports.scrollEvent.send(model);
-                elemInfo.ticking = false;
+                rsNesTicking = false;
             });
-            elemInfo.ticking = true;
+            rsNesTicking = true;
         }
-    }
 }
