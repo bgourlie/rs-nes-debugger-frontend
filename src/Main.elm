@@ -427,6 +427,20 @@ subscriptions model =
 -- VIEW
 
 
+instructionScrollHandleTop : Model -> (String, String)
+instructionScrollHandleTop model =
+    -- type-check on Styles.Id in ScrollBars?
+        let
+            top =
+                case Dict.get (toString Styles.InstructionsContainer) model.scrollBars of
+                    Just scrollProps ->
+                        scrollProps.positionY
+
+                    Nothing ->
+                        0.0
+        in
+            ("top", (toString (top * 100.0)) ++ "%")
+
 view : Model -> Html Msg
 view model =
     div [ id Styles.Container ]
@@ -444,7 +458,7 @@ view model =
             [ div [ id Styles.LeftColumn ]
                 [ div [ class [ Styles.ScrollContainer ] ]
                     [ div [ class [ Styles.ScrollBar ] ]
-                        [ div [ class [ Styles.ScrollBarHandle ] ] []
+                        [ div [ class [ Styles.ScrollBarHandle ], Html.Attributes.style [ instructionScrollHandleTop model ]  ] []
                         ]
                     , div [ id Styles.InstructionsContainer, class [ Styles.ScrollInnerContainer ] ]
                         [ Instruction.view (\address -> ToggleBreakpointClick address) model

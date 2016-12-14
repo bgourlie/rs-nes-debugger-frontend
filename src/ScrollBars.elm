@@ -54,7 +54,7 @@ update msg model =
         ScrollEventReceived e ->
             model
                 |> Dict.update e.elementId (Maybe.andThen (\oldProps -> Just { oldProps | positionY = e.positionY }))
-                |> \newModel -> ( (Debug.log "scrollbars event" newModel), Cmd.none )
+                |> \newModel -> ( newModel, Cmd.none )
 
         ScrollEventDecodeFail err ->
             ( model, Cmd.none )
@@ -79,7 +79,8 @@ styles =
                         , Css.width (Css.pct 100)
                         , Css.top (Css.px 0)
                         , Css.height (Css.px 63)
-                        , Css.backgroundColor (Css.hex "#FFFF00")
+                        , Css.backgroundColor (Css.hex "#FF0000")
+                        , Css.property "transition" "top .15s"
                         ]
                     ]
                 ]
