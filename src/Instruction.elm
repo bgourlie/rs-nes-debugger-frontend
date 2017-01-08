@@ -16,6 +16,7 @@ import Registers
 import Byte
 import Breakpoints
 import AddressingMode
+import MemorySnapshot
 import Icons
 import Colors
 
@@ -41,6 +42,7 @@ type alias Model a =
         , instructionsDisplayed : Int
         , instructionOffsetMap : OffsetMap
         , registers : Registers.Registers
+        , memory : MemorySnapshot.MemorySnapshot
         , breakpoints : Breakpoints.Breakpoints
         , byteFormat : Byte.Format
     }
@@ -112,21 +114,55 @@ view breakpointClickHandler model =
                 |> List.take instructionsDisplayed
                 |> List.map
                     (\instruction ->
-                        Html.tr ([ classList [ ( Styles.CurrentInstruction, instruction.offset == pc ) ] ])
-                            [ Html.td [ class [ Styles.Gutter ] ]
-                                [ Html.div [ class [ Styles.MemoryLocation ] ] [ Byte.view16 byteFormat instruction.offset ]
-                                , Html.div [ breakpointClasses breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
-                                    [ Icons.breakpoint
+                        let
+                            isCurrentInstruction =
+                                instruction.offset == pc
+
+                            addressingModeMemory =
+                                if isCurrentInstruction then
+                                    AddressingMode.getMemory model.memory model.registers instruction.addressingMode
+                                else
+                                    Nothing
+                        in
+                            Html.tr ([ classList [ ( Styles.CurrentInstruction, isCurrentInstruction ) ] ])
+                                [ Html.td [ class [ Styles.Gutter ] ]
+                                    [ Html.div [ class [ Styles.MemoryLocation ] ] [ Byte.view16 byteFormat instruction.offset ]
+                                    , Html.div [ breakpointClasses breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
+                                        [ Icons.breakpoint
+                                        ]
+                                    ]
+                                , Html.td []
+                                    [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text instruction.mnemonic ]
+                                    , Html.span [] [ Html.text " " ]
+                                    , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
+                                    , addressingModeMemoryView byteFormat addressingModeMemory
                                     ]
                                 ]
-                            , Html.td []
-                                [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text instruction.mnemonic ]
-                                , Html.span [] [ Html.text " " ]
-                                , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
-                                ]
-                            ]
                     )
             )
+
+
+addressingModeMemoryView : Byte.Format -> Maybe ( Int, Int ) -> Html msg
+addressingModeMemoryView byteFormat amMemory =
+    case amMemory of
+        Just mem ->
+            let
+                ( targetAddr, targetValue ) =
+                    mem
+            in
+                Html.span [ class [ Styles.AddressModeValues ] ]
+                    [ Html.span [ class [ Styles.AddressModeMemoryLocation ] ]
+                        [ Html.text "Target: "
+                        , Byte.view16 byteFormat targetAddr
+                        ]
+                    , Html.span [ class [ Styles.AddressModeMemoryValue ] ]
+                        [ Html.text "Value: "
+                        , Byte.view8 byteFormat targetValue
+                        ]
+                    ]
+
+        Nothing ->
+            Html.span [] []
 
 
 styles =
@@ -153,6 +189,13 @@ styles =
         ]
     , Styles.class Styles.MemoryLocation
         [ Css.display Css.inlineBlock
+        ]
+    , Styles.class Styles.AddressModeValues
+        [ Css.color Colors.addressModeLiveValue
+        , Css.paddingLeft (Css.em 1)
+        ]
+    , Styles.class Styles.AddressModeMemoryValue
+        [ Css.paddingLeft (Css.em 1)
         ]
     , Styles.class Styles.BreakpointHitBox
         [ Css.display Css.inlineBlock

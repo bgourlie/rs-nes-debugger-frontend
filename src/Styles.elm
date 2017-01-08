@@ -33,6 +33,9 @@ type Class
     | BreakpointHitBox
     | BreakpointOn
     | MemoryLocation
+    | AddressModeValues
+    | AddressModeMemoryLocation
+    | AddressModeMemoryValue
     | Mnemonic
     | Operand
     | Toggle

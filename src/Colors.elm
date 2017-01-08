@@ -81,3 +81,7 @@ hexEditorByte =
 
 hexEditorBackground =
     hex "#222222"
+
+
+addressModeLiveValue =
+    hex "#ffc66d"

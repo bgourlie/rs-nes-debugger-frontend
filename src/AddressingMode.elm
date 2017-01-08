@@ -1,10 +1,12 @@
-module AddressingMode exposing (decoder, view, AddressingMode)
+module AddressingMode exposing (decoder, view, getMemory, AddressingMode)
 
 import Html exposing (span, text, Html)
 import Bitwise
 import Json.Decode as Json exposing (field, Decoder)
 import ParseInt exposing (toHex)
 import Byte
+import Registers exposing (Registers)
+import MemorySnapshot exposing (getByte, MemorySnapshot)
 
 
 type AddressingMode
@@ -19,6 +21,47 @@ type AddressingMode
     | Relative Int
     | Implied
     | Accumulator
+
+
+getMemory : MemorySnapshot -> Registers -> AddressingMode -> Maybe ( Int, Int )
+getMemory memory registers am =
+    case am of
+        IndexedIndirect baseAddr ->
+            getByte (Bitwise.and (baseAddr + registers.x) 0xFF) memory
+                |> Maybe.andThen (\addr -> getByte addr memory)
+                |> Maybe.map (\targetAddr -> ( targetAddr, Maybe.withDefault 0 (getByte targetAddr memory) ))
+
+        IndirectIndexed baseAddr ->
+            getByte baseAddr memory
+                |> Maybe.andThen (\addr -> getByte (addr + registers.y) memory)
+                |> Maybe.map (\targetAddr -> ( targetAddr, Maybe.withDefault 0 (getByte targetAddr memory) ))
+
+        ZeroPage addr ->
+            getByte addr memory
+                |> Maybe.map (\byte -> ( addr, byte ))
+
+        Absolute addr ->
+            getByte addr memory
+                |> Maybe.map (\byte -> ( addr, byte ))
+
+        AbsoluteX addr ->
+            getByte (addr + registers.x) memory
+                |> Maybe.map (\byte -> ( addr + registers.x, byte ))
+
+        AbsoluteY addr ->
+            getByte (addr + registers.y) memory
+                |> Maybe.map (\byte -> ( addr + registers.y, byte ))
+
+        ZeroPageX addr ->
+            getByte (addr + registers.x) memory
+                |> Maybe.map (\byte -> ( addr + registers.x, byte ))
+
+        Relative offset ->
+            getByte (registers.pc + offset) memory
+                |> Maybe.map (\byte -> ( registers.pc + offset, byte ))
+
+        _ ->
+            Nothing
 
 
 view : Byte.Format -> AddressingMode -> Html msg

@@ -1,5 +1,6 @@
-module MemorySnapshot exposing (messageDecoder, MemorySnapshot, Message(NoChange, Updated))
+module MemorySnapshot exposing (messageDecoder, getByte, MemorySnapshot, Message(NoChange, Updated))
 
+import List exposing (drop, take, head)
 import Http
 import Task
 import Json.Decode as Json exposing (Decoder, field)
@@ -13,6 +14,18 @@ type alias MemorySnapshot =
 type Message
     = NoChange Int
     | Updated MemorySnapshot
+
+
+getByte : Int -> MemorySnapshot -> Maybe Int
+getByte addr snapshot =
+    let
+        ( _, memory ) =
+            snapshot
+    in
+        memory
+            |> drop addr
+            |> take 1
+            |> head
 
 
 messageDecoder : Decoder Message
