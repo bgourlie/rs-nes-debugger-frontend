@@ -57,6 +57,8 @@ getMemory memory registers am =
                 |> Maybe.map (\byte -> ( addr + registers.x, byte ))
 
         Relative offset ->
+            -- FIXME: This is wrong. The address should be the PC minus the number of bytes of the current opcode
+            -- plus the offset
             getByte (registers.pc + offset) memory
                 |> Maybe.map (\byte -> ( registers.pc + offset, byte ))
 
