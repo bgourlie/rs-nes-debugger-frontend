@@ -57,5 +57,4 @@ type Id
     | HexEditor
     | HexEditorBody
     | InstructionsContainer
-    | RegistersTable
     | Cycles

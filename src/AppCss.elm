@@ -5,7 +5,6 @@ import Css.Elements exposing (html, body, ul, li, div)
 import Css.Namespace exposing (namespace)
 import Styles
 import Main
-import Registers
 import Instruction
 import Console
 import Byte
@@ -66,7 +65,6 @@ css =
               ]
             , commonStyles
             , Main.styles
-            , Registers.styles
             , Instruction.styles
             , Console.styles
             , Byte.styles

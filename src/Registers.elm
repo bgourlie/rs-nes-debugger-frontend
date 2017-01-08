@@ -1,4 +1,4 @@
-module Registers exposing (new, decoder, Registers, view, styles)
+module Registers exposing (new, decoder, Registers, view)
 
 import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
 import Html.Attributes exposing (title, colspan)
@@ -32,6 +32,16 @@ getInterrupt model =
 getDecimal : Registers -> Bool
 getDecimal model =
     and model.stat 0x08 > 0
+
+
+getBreak : Registers -> Bool
+getBreak model =
+    and model.stat 0x10 > 0
+
+
+getUnused : Registers -> Bool
+getUnused model =
+    and model.stat 0x20 > 0
 
 
 getOverflow : Registers -> Bool
@@ -96,14 +106,14 @@ view model =
         cycles =
             model.cycles
     in
-        table [ id Styles.RegistersTable ]
+        table []
             [ tr []
                 [ th [ title "Program Counter" ] [ text "PC" ]
                 , th [ title "Stack Pointer" ] [ text "SP" ]
                 , th [ title "Accumulator" ] [ text "ACC" ]
                 , th [ title "Index (X)" ] [ text "X" ]
                 , th [ title "Index (Y)" ] [ text "Y" ]
-                , th [ colspan 6 ] [ text "Status" ]
+                , th [ title "Status Flags" ] [ text "NV-BDIZC" ]
                 , th [] [ text "Cycles" ]
                 ]
             , tr []
@@ -112,12 +122,17 @@ view model =
                 , td [] [ Byte.view8 display registers.acc ]
                 , td [] [ Byte.view8 display registers.x ]
                 , td [] [ Byte.view8 display registers.y ]
-                , td [ title "Carry Flag" ] [ text <| "C" ++ flagDisplay (getCarry registers) ]
-                , td [ title "Zero Flag" ] [ text <| "Z" ++ flagDisplay (getZero registers) ]
-                , td [ title "Interrupt Flag" ] [ text <| "I" ++ flagDisplay (getInterrupt registers) ]
-                , td [ title "Decimal Flag" ] [ text <| "D" ++ flagDisplay (getDecimal registers) ]
-                , td [ title "Overflow Flag" ] [ text <| "V" ++ flagDisplay (getOverflow registers) ]
-                , td [ title "Sign Flag" ] [ text <| "S" ++ flagDisplay (getNegative registers) ]
+                , td []
+                    [ text <|
+                        flagDisplay (getNegative registers)
+                            ++ flagDisplay (getOverflow registers)
+                            ++ flagDisplay (getUnused registers)
+                            ++ flagDisplay (getBreak registers)
+                            ++ flagDisplay (getDecimal registers)
+                            ++ flagDisplay (getInterrupt registers)
+                            ++ flagDisplay (getZero registers)
+                            ++ flagDisplay (getCarry registers)
+                    ]
                 , td [] [ text <| toString cycles ]
                 ]
             ]
@@ -129,17 +144,3 @@ flagDisplay val =
         toString 1
     else
         toString 0
-
-
-styles =
-    [ Styles.id Styles.RegistersTable
-        [ Css.descendants
-            [ Css.Elements.th
-                [ Css.width (Css.ch 6)
-                ]
-            , Css.Elements.td
-                [ Css.textAlign Css.center
-                ]
-            ]
-        ]
-    ]
