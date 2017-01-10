@@ -6,7 +6,7 @@ import Json.Decode as Json exposing (field, Decoder)
 import ParseInt exposing (toHex)
 import Byte
 import Registers exposing (Registers)
-import MemorySnapshot exposing (getByte, MemorySnapshot)
+import MemorySnapshot exposing (getByte, getWord, MemorySnapshot)
 
 
 type AddressingMode
@@ -23,44 +23,41 @@ type AddressingMode
     | Accumulator
 
 
+
+-- TODO: This is something that really needs good tests
+
+
 getMemory : MemorySnapshot -> Registers -> AddressingMode -> Maybe ( Int, Int )
 getMemory memory registers am =
     case am of
-        IndexedIndirect baseAddr ->
-            getByte (Bitwise.and (baseAddr + registers.x) 0xFF) memory
-                |> Maybe.andThen (\addr -> getByte addr memory)
-                |> Maybe.map (\targetAddr -> ( targetAddr, Maybe.withDefault 0 (getByte targetAddr memory) ))
+        IndexedIndirect addr ->
+            Nothing
 
-        IndirectIndexed baseAddr ->
-            getByte baseAddr memory
-                |> Maybe.andThen (\addr -> getByte (addr + registers.y) memory)
-                |> Maybe.map (\targetAddr -> ( targetAddr, Maybe.withDefault 0 (getByte targetAddr memory) ))
+        IndirectIndexed addr ->
+            let
+                -- TODO: for IndirectIndexed, getWord should have zero-page wrapping behavior
+                targetAddr =
+                    (getWord addr memory) + registers.y
+
+                value =
+                    getByte targetAddr memory
+            in
+                Just ( targetAddr, value )
 
         ZeroPage addr ->
-            getByte addr memory
-                |> Maybe.map (\byte -> ( addr, byte ))
+            Just ( addr, getByte addr memory )
 
         Absolute addr ->
-            getByte addr memory
-                |> Maybe.map (\byte -> ( addr, byte ))
+            Just ( addr, getByte addr memory )
 
         AbsoluteX addr ->
-            getByte (addr + registers.x) memory
-                |> Maybe.map (\byte -> ( addr + registers.x, byte ))
+            Just ( addr, getByte (addr + registers.x) memory )
 
         AbsoluteY addr ->
-            getByte (addr + registers.y) memory
-                |> Maybe.map (\byte -> ( addr + registers.y, byte ))
+            Just ( addr, getByte (addr + registers.y) memory )
 
         ZeroPageX addr ->
-            getByte (addr + registers.x) memory
-                |> Maybe.map (\byte -> ( addr + registers.x, byte ))
-
-        Relative offset ->
-            -- FIXME: This is wrong. The address should be the PC minus the number of bytes of the current opcode
-            -- plus the offset
-            getByte (registers.pc + offset) memory
-                |> Maybe.map (\byte -> ( registers.pc + offset, byte ))
+            Just ( addr, getByte (addr + registers.x) memory )
 
         _ ->
             Nothing

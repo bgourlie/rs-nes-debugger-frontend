@@ -1,4 +1,4 @@
-module MemorySnapshot exposing (messageDecoder, getByte, MemorySnapshot, Message(NoChange, Updated))
+module MemorySnapshot exposing (messageDecoder, getByte, getWord, MemorySnapshot, Message(NoChange, Updated))
 
 import List exposing (drop, take, head)
 import Http
@@ -16,7 +16,7 @@ type Message
     | Updated MemorySnapshot
 
 
-getByte : Int -> MemorySnapshot -> Maybe Int
+getByte : Int -> MemorySnapshot -> Int
 getByte addr snapshot =
     let
         ( _, memory ) =
@@ -26,6 +26,19 @@ getByte addr snapshot =
             |> drop addr
             |> take 1
             |> head
+            |> Maybe.withDefault 0
+
+
+getWord : Int -> MemorySnapshot -> Int
+getWord addr snapshot =
+    let
+        low_byte =
+            getByte addr snapshot
+
+        high_byte =
+            getByte (addr + 1) snapshot
+    in
+        Bitwise.or low_byte (Bitwise.shiftLeftBy 8 high_byte)
 
 
 messageDecoder : Decoder Message
