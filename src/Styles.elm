@@ -38,8 +38,6 @@ type Class
     | AddressModeMemoryValue
     | Mnemonic
     | Operand
-    | Toggle
-    | ToggleLabel
     | Instructions
     | CurrentInstruction
 

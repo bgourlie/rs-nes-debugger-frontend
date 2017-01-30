@@ -9,7 +9,6 @@ import Instruction
 import Console
 import Byte
 import Icons
-import ToggleButton
 import HexEditor
 import Icons
 import Colors
@@ -29,7 +28,6 @@ commonStyles =
         , Css.padding (Css.em 0.1)
         , Css.backgroundColor Css.transparent
         , Css.outline Css.none
-        , Css.verticalAlign Css.top
         , Css.hover
             [ Css.borderColor (Css.hex Colors.buttonBorderColor)
             ]
@@ -68,7 +66,6 @@ css =
             , Instruction.styles
             , Console.styles
             , Byte.styles
-            , ToggleButton.styles
             , HexEditor.styles
             , Icons.styles
             ]

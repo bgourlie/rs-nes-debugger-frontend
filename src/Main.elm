@@ -24,7 +24,6 @@ import Colors
 import Byte
 import Breakpoints
 import Icons
-import ToggleButton
 import HexEditor
 import MemorySnapshot
 import Instruction
@@ -61,24 +60,9 @@ type alias Model =
     , instructionOffsetMap : Instruction.OffsetMap
     , memory : MemorySnapshot.MemorySnapshot
     , registers : Registers.Registers
-    , stepState : StepState
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
     }
-
-
-type StepState
-    = Off
-    | SingleStepping
-    | AutoStepping
-
-
-type StepInput
-    = SingleStep
-    | AutoStepToggle
-    | AutoStepOff
-    | StepRequestSucceeded
-    | StepRequestFailed
 
 
 init : ( Model, Cmd Msg )
@@ -91,7 +75,6 @@ init =
             , instructionOffsetMap = Dict.empty
             , memory = ( 0, [] )
             , registers = Registers.new
-            , stepState = Off
             , breakpoints = Set.empty
             , byteFormat = Byte.Hex
             }
@@ -115,7 +98,6 @@ type Msg
     | ContinueClick
     | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
-    | ToggleAutoStepClicked
     | ScrollInstructionIntoViewClick
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
@@ -130,10 +112,6 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ToggleAutoStepClicked ->
-            ( model, Cmd.none )
-                |> transitionStepState AutoStepToggle
-
         DebuggerCommandReceiveSuccess debuggerCommand ->
             ( model, Cmd.none )
                 |> handleDebuggerCommand debuggerCommand
@@ -152,22 +130,18 @@ update msg model =
             consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
 
         StepClick ->
-            ( model, Cmd.none )
-                |> transitionStepState SingleStep
+            ( model, Step.request StepRequestFail StepRequestSuccess )
 
         StepRequestSuccess resp ->
             ( model, Cmd.none )
-                |> transitionStepState StepRequestSucceeded
 
         StepRequestFail err ->
             ( model, Cmd.none )
                 |> consoleMessage "Step request failed"
-                |> transitionStepState StepRequestFailed
 
         ContinueClick ->
             ( model, Cmd.none )
                 |> consoleMessage "Execution Continued..."
-                |> transitionStepState AutoStepOff
                 |> sendContinueRequest
 
         ContinueRequestSuccess resp ->
@@ -217,37 +191,6 @@ scrollElementIntoView class appInput =
             ( inputMessage, Cmd.batch [ inputCmd, Ports.scrollElementIntoViewCommand class ] )
 
 
-getNewStepState : StepState -> StepInput -> StepState
-getNewStepState currentState input =
-    case currentState of
-        Off ->
-            case input of
-                SingleStep ->
-                    SingleStepping
-
-                AutoStepToggle ->
-                    AutoStepping
-
-                _ ->
-                    Off
-
-        SingleStepping ->
-            case input of
-                _ ->
-                    Off
-
-        AutoStepping ->
-            case input of
-                StepRequestSucceeded ->
-                    AutoStepping
-
-                SingleStep ->
-                    SingleStepping
-
-                _ ->
-                    Off
-
-
 handleInstructionsResponse : List Instruction.Instruction -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleInstructionsResponse instructions appInput =
     let
@@ -260,38 +203,6 @@ handleInstructionsResponse instructions appInput =
                 |> Dict.fromList
     in
         ( { inputModel | instructions = instructions, instructionOffsetMap = instrMap }, inputCmd )
-
-
-transitionStepState : StepInput -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-transitionStepState smInput appInput =
-    let
-        ( inputModel, inputCmd ) =
-            appInput
-
-        oldStepState =
-            inputModel.stepState
-
-        newStepState =
-            getNewStepState inputModel.stepState smInput
-
-        stepRequest =
-            Step.request StepRequestFail StepRequestSuccess
-    in
-        appInput
-            |> case newStepState of
-                Off ->
-                    \( outputModel, outputCmd ) ->
-                        ( { outputModel | stepState = Off }, outputCmd )
-
-                SingleStepping ->
-                    \( outputModel, outputCmd ) ->
-                        ( { outputModel | stepState = SingleStepping }, Cmd.batch [ outputCmd, stepRequest ] )
-
-                AutoStepping ->
-                    \output ->
-                        output
-                            |> \( outputModel, outputCmd ) ->
-                                ( { outputModel | stepState = AutoStepping }, Cmd.batch [ outputCmd, stepRequest ] )
 
 
 onBreakpoint : Model -> Bool
@@ -360,12 +271,10 @@ handleBreakCondition breakReason snapshot appInput =
         DebuggerCommand.Breakpoint ->
             appInput
                 |> consoleMessage ("Hit breakpoint @ 0x" ++ toHex snapshot.registers.pc)
-                |> transitionStepState AutoStepOff
 
         DebuggerCommand.Trap ->
             appInput
                 |> consoleMessage ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
-                |> transitionStepState AutoStepOff
 
         _ ->
             appInput
@@ -391,9 +300,8 @@ view model =
             [ Registers.view model
             , div [ id Styles.DebuggerButtons ]
                 [ button [ class [ Styles.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
-                , button [ class [ Styles.Button ], onClick StepClick, disabled <| autoStepEnabled model, title "Step" ] [ Icons.step ]
+                , button [ class [ Styles.Button ], onClick StepClick, title "Step" ] [ Icons.step ]
                 , button [ class [ Styles.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
-                , ToggleButton.view ToggleAutoStepClicked "autoStepToggle" "Autostep" (autoStepEnabled model)
                 ]
             , Byte.toggleDisplayView UpdateByteFormat model
             ]
@@ -413,16 +321,6 @@ view model =
                 ]
             ]
         ]
-
-
-autoStepEnabled : Model -> Bool
-autoStepEnabled model =
-    case model.stepState of
-        AutoStepping ->
-            True
-
-        _ ->
-            False
 
 
 styles : List Css.Snippet
@@ -481,7 +379,8 @@ styles =
         , Css.position Css.relative
         ]
     , Styles.id Styles.DebuggerButtons
-        [ Css.children
+        [ Css.verticalAlign Css.top
+        , Css.children
             [ Css.everything
                 [ Css.marginLeft (Css.px 5)
                 , Css.first
