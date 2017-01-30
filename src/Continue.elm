@@ -1,6 +1,5 @@
 module Continue exposing (request, Model)
 
-import Task
 import Http
 import Json.Decode exposing (Decoder, field)
 

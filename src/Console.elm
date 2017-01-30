@@ -119,6 +119,7 @@ view { messages } =
         )
 
 
+messageRepeatsClasses : Int -> Html.Attribute msg
 messageRepeatsClasses repeats =
     if repeats > 0 then
         class [ Styles.MessageRepeats, Styles.MessageRepeatsShow ]

@@ -1,7 +1,5 @@
 module CpuSnapshot exposing (decoder, CpuSnapshot)
 
-import Http
-import Task
 import Debug
 import Json.Decode as Json exposing (Decoder, field)
 import Registers exposing (Registers)

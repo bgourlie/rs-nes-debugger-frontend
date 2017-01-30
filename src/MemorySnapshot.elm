@@ -1,8 +1,6 @@
 module MemorySnapshot exposing (messageDecoder, getByte, getWord, MemorySnapshot, Message(NoChange, Updated))
 
 import List exposing (drop, take, head)
-import Http
-import Task
 import Json.Decode as Json exposing (Decoder, field)
 import Bitwise
 

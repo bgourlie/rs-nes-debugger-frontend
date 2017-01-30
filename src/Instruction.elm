@@ -5,12 +5,8 @@ import Html.Events exposing (onClick)
 import Http
 import List
 import Dict exposing (Dict)
-import Svg exposing (svg)
-import Svg.Attributes
 import Json.Decode as Json exposing (Decoder, field)
-import ParseInt exposing (toHex)
 import Css
-import Css.Elements as CssElem
 import Styles
 import Registers
 import Byte
@@ -165,6 +161,7 @@ addressingModeMemoryView byteFormat amMemory =
             Html.span [] []
 
 
+styles : List Css.Snippet
 styles =
     [ Styles.class Styles.Instructions
         [ Css.fontFamilies [ "monospace" ]
@@ -220,5 +217,6 @@ styles =
     ]
 
 
+breakpointClasses : Breakpoints.Breakpoints -> Int -> Attribute msg
 breakpointClasses breakpoints offset =
     classList [ ( Styles.BreakpointHitBox, True ), ( Styles.BreakpointOn, Breakpoints.isSet breakpoints offset ) ]

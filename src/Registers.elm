@@ -4,8 +4,6 @@ import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
 import Html.Attributes exposing (title, colspan)
 import Bitwise exposing (and)
 import Json.Decode as Json exposing (Decoder, field)
-import Css
-import Css.Elements
 import Styles
 import Byte
 

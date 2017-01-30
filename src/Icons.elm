@@ -77,6 +77,7 @@ step =
         ]
 
 
+styles : List Css.Snippet
 styles =
     [ Styles.class Styles.ButtonIcon
         [ Css.height (Css.ch 4)

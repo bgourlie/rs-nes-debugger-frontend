@@ -4,7 +4,6 @@ import Html exposing (table, thead, tbody, td, span, text, tr, th, Html)
 import List
 import ParseInt exposing (toHex)
 import List.Split
-import Bitwise
 import Css
 import Css.Elements
 import Styles
@@ -24,14 +23,17 @@ type alias Model a =
     }
 
 
+bytesPerRow : Int
 bytesPerRow =
     32
 
 
+windowSize : Int
 windowSize =
     2048
 
 
+startOffset : Int
 startOffset =
     0x00
 
@@ -63,7 +65,7 @@ intoRows model =
             |> List.drop startOffset
             |> List.take windowSize
             |> List.Split.chunksOfLeft bytesPerRow
-            |> List.map2 (,) (List.range 0 (floor (windowSize / bytesPerRow)))
+            |> List.map2 (,) (List.range 0 (floor (toFloat windowSize / toFloat bytesPerRow)))
             |> List.map
                 (\( rowOffset, row ) ->
                     tr [ class [ Styles.BytesRow ] ]
