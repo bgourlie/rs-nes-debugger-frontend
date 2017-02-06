@@ -7,14 +7,16 @@ import MemorySnapshot
 
 
 type alias CpuSnapshot =
-    { registers : Registers.Registers
+    { cycles : Int
+    , registers : Registers.Registers
     , memory : MemorySnapshot.MemorySnapshot
     }
 
 
 decoder : MemorySnapshot.MemorySnapshot -> Decoder CpuSnapshot
 decoder oldMemory =
-    Json.map2 CpuSnapshot
+    Json.map3 CpuSnapshot
+        (field "cycles" Json.int)
         (field "registers" Registers.decoder)
         ((field "memory" MemorySnapshot.messageDecoder)
             |> Json.andThen

@@ -65,6 +65,7 @@ type alias Registers =
 type alias Model a =
     { a
         | registers : Registers
+        , cycles : Int
         , byteFormat : Byte.Format
     }
 
@@ -99,6 +100,9 @@ view model =
 
         display =
             model.byteFormat
+
+        cycles =
+            model.cycles
     in
         table []
             [ tr []
@@ -108,6 +112,7 @@ view model =
                 , th [ title "Index (X)" ] [ text "X" ]
                 , th [ title "Index (Y)" ] [ text "Y" ]
                 , th [ title "Status Flags" ] [ text "NV-BDIZC" ]
+                , th [] [ text "Cycles" ]
                 ]
             , tr []
                 [ td [] [ Byte.view16 display registers.pc ]
@@ -126,6 +131,7 @@ view model =
                             ++ flagDisplay (getZero registers)
                             ++ flagDisplay (getCarry registers)
                     ]
+                , td [] [ text <| toString cycles ]
                 ]
             ]
 

@@ -55,6 +55,7 @@ main =
 
 type alias Model =
     { messages : List ( String, Int )
+    , cycles : Int
     , instructions : List Instruction.Instruction
     , instructionsDisplayed : Int
     , instructionOffsetMap : Instruction.OffsetMap
@@ -70,6 +71,7 @@ init =
     let
         model =
             { messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
+            , cycles = 0
             , instructions = []
             , instructionsDisplayed = 512
             , instructionOffsetMap = Dict.empty
@@ -225,6 +227,7 @@ handleDebuggerCommand debuggerCommand appInput =
                 |> \( outputModel, outputCmd ) ->
                     ( { outputModel
                         | registers = snapshot.registers
+                        , cycles = snapshot.cycles
                         , memory = snapshot.memory
                       }
                     , outputCmd
