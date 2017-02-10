@@ -11,7 +11,7 @@ import WebSocket
 import Css
 import Css.Elements
 import ParseInt exposing (toHex)
-import DebuggerCommand exposing (BreakReason, DebuggerCommand(Break))
+import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
 import Instruction
 import CpuSnapshot exposing (CpuSnapshot)
 import Ports
@@ -224,14 +224,22 @@ handleDebuggerCommand debuggerCommand appInput =
             appInput
                 |> fetchInstructionsIfNeeded
                 |> handleBreakCondition reason snapshot
+                |> \( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd )
+
+        Crash reason snapshot ->
+            appInput
                 |> \( outputModel, outputCmd ) ->
-                    ( { outputModel
-                        | registers = snapshot.registers
-                        , cycles = snapshot.cycles
-                        , memory = snapshot.memory
-                      }
-                    , outputCmd
-                    )
+                    ( applySnapshot outputModel snapshot, outputCmd )
+                        |> consoleMessage ("A crash has occurred: " ++ (crashReasonToString reason))
+
+
+applySnapshot : Model -> CpuSnapshot.CpuSnapshot -> Model
+applySnapshot model snapshot =
+    { model
+        | registers = snapshot.registers
+        , cycles = snapshot.cycles
+        , memory = snapshot.memory
+    }
 
 
 fetchInstructionsIfNeeded : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
