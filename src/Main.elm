@@ -110,7 +110,6 @@ type Msg
     | InstructionRequestFail Http.Error
     | ScrollEventReceived Ports.ScrollEvent
     | ScrollEventDecodeError String
-    | ConnectClick
     | NoOp
 
 
@@ -192,10 +191,6 @@ update msg model =
         ScrollEventDecodeError err ->
             ( model, Cmd.none )
                 |> consoleMessage ("ScrollDecodeError: " ++ err)
-
-        ConnectClick ->
-            ( model, WebSocket.connect wsDebuggerEndpoint )
-                |> consoleMessage "Connect clicked"
 
         NoOp ->
             ( model, Cmd.none )
@@ -327,7 +322,7 @@ view model =
         [ header []
             [ Registers.view model
             , div [ id Styles.DebuggerButtons ]
-                [ button [ class [ Styles.Button ], onClick ConnectClick, title "Continue" ] [ Icons.continue ]
+                [ button [ class [ Styles.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
                 , button [ class [ Styles.Button ], onClick StepClick, title "Step" ] [ Icons.step ]
                 , button [ class [ Styles.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
                 ]
