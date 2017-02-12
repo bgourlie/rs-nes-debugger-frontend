@@ -304,8 +304,8 @@ handleBreakCondition breakReason snapshot appInput =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ WebSocket.connectionOpened DebuggerConnectionOpened
-        , WebSocket.connectionClosed DebuggerConnectionClosed
+        [ WebSocket.onOpen DebuggerConnectionOpened
+        , WebSocket.onClose DebuggerConnectionClosed
         , WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         , Ports.scrollEvent <| Ports.mapScrollEvent ScrollEventDecodeError ScrollEventReceived
