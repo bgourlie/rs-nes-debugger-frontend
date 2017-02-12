@@ -89,7 +89,9 @@ init =
 
 
 type Msg
-    = DebuggerCommandReceiveSuccess DebuggerCommand
+    = DebuggerConnectionOpened String
+    | DebuggerConnectionClosed String
+    | DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
     | ToggleBreakpointClick Int
     | ToggleBreakpointRequestSuccess ToggleBreakpoint.Message
@@ -114,6 +116,14 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        DebuggerConnectionOpened name ->
+            ( model, Cmd.none )
+                |> consoleMessage ("Connected to debugger at " ++ name)
+
+        DebuggerConnectionClosed _ ->
+            ( model, Cmd.none )
+                |> consoleMessage ("Disconnected from debugger")
+
         DebuggerCommandReceiveSuccess debuggerCommand ->
             ( model, Cmd.none )
                 |> handleDebuggerCommand debuggerCommand
@@ -294,7 +304,9 @@ handleBreakCondition breakReason snapshot appInput =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ WebSocket.listen wsDebuggerEndpoint <|
+        [ WebSocket.connectionOpened DebuggerConnectionOpened
+        , WebSocket.connectionClosed DebuggerConnectionClosed
+        , WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         , Ports.scrollEvent <| Ports.mapScrollEvent ScrollEventDecodeError ScrollEventReceived
         ]
