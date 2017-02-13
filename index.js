@@ -23,19 +23,3 @@ app.ports.receiveScrollEventsForCommand.subscribe(function(elemId) {
     }
 });
 
-function rsNesHandleScrollEventHandler(e) {
-    const element = e.target;
-    if (!elemInfo.ticking) {
-        window.requestAnimationFrame(function() {
-            const scrollPercentage = element.scrollTop / (element.scrollHeight-element.clientHeight);
-            const model = {
-                elementId: element.id,
-                scrollPosition: scrollPercentage
-            }
-
-            app.ports.scrollEvent.send(model);
-            elemInfo.ticking = false;
-        });
-        elemInfo.ticking = true;
-    }
-}

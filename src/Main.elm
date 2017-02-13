@@ -108,8 +108,6 @@ type Msg
     | UpdateByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
-    | ScrollEventReceived Ports.ScrollEvent
-    | ScrollEventDecodeError String
     | NoOp
 
 
@@ -185,13 +183,6 @@ update msg model =
         InstructionRequestFail err ->
             ( model, Cmd.none )
                 |> consoleMessage ("Continue request fail: " ++ toString err)
-
-        ScrollEventReceived e ->
-            ( model, Cmd.none )
-
-        ScrollEventDecodeError err ->
-            ( model, Cmd.none )
-                |> consoleMessage ("ScrollDecodeError: " ++ err)
 
         NoOp ->
             ( model, Cmd.none )
@@ -328,7 +319,6 @@ subscriptions model =
         , WebSocket.onClose DebuggerConnectionClosed
         , WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
-        , Ports.scrollEvent <| Ports.mapScrollEvent ScrollEventDecodeError ScrollEventReceived
         ]
 
 
