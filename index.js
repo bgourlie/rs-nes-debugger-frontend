@@ -12,14 +12,3 @@ app.ports.scrollElementIntoViewCommand.subscribe(function(cls) {
         elem.scrollIntoView();
     }
 });
-
-app.ports.receiveScrollEventsForCommand.subscribe(function(elemId) {
-    const elem = document.getElementById(elemId);
-    if (elem) {
-        console.log("receiving scroll events for " + elemId)
-        elem.addEventListener('scroll', rsNesHandleScrollEventHandler);
-    } else {
-        console.log("receiveScrollEventsFor error: No element with id '" + elemId + "' found");
-    }
-});
-

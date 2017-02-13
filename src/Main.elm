@@ -19,6 +19,7 @@ import ToggleBreakpoint
 import Continue
 import Registers
 import Step
+import DebuggerState
 import Console
 import Colors
 import Byte
@@ -54,7 +55,8 @@ main =
 
 
 type alias Model =
-    { messages : List ( String, Int )
+    { debuggerState : DebuggerState.DebuggerState
+    , messages : List ( String, Int )
     , cycles : Int
     , instructions : List Instruction.Instruction
     , instructionsDisplayed : Int
@@ -70,7 +72,8 @@ init : ( Model, Cmd Msg )
 init =
     let
         model =
-            { messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
+            { debuggerState = DebuggerState.NotConnected
+            , messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
             , instructions = []
             , instructionsDisplayed = 512
@@ -108,6 +111,7 @@ type Msg
     | UpdateByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
+    | UnknownState ( DebuggerState.DebuggerState, DebuggerState.Input )
     | NoOp
 
 
@@ -116,11 +120,13 @@ update msg model =
     case msg of
         DebuggerConnectionOpened name ->
             ( model, Cmd.none )
+                |> transitionDebuggerState DebuggerState.Connect
                 |> clearCpuState
                 |> consoleMessage ("Connected to debugger at " ++ name)
 
         DebuggerConnectionClosed _ ->
             ( model, Cmd.none )
+                |> transitionDebuggerState DebuggerState.Disconnect
                 |> consoleMessage ("Disconnected from debugger")
 
         DebuggerCommandReceiveSuccess debuggerCommand ->
@@ -141,25 +147,30 @@ update msg model =
             consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
 
         StepClick ->
-            ( model, Step.request StepRequestFail StepRequestSuccess )
+            ( model, Cmd.none )
+                |> transitionDebuggerState DebuggerState.Step
 
         StepRequestSuccess resp ->
             ( model, Cmd.none )
+                |> transitionDebuggerState (DebuggerState.StepRequestComplete DebuggerState.Success)
 
         StepRequestFail err ->
             ( model, Cmd.none )
+                |> transitionDebuggerState (DebuggerState.StepRequestComplete DebuggerState.Fail)
                 |> consoleMessage "Step request failed"
 
         ContinueClick ->
             ( model, Cmd.none )
-                |> consoleMessage "Execution Continued..."
-                |> sendContinueRequest
+                |> transitionDebuggerState DebuggerState.Continue
+                |> consoleMessage "Continuing execution..."
 
         ContinueRequestSuccess resp ->
             ( model, Cmd.none )
+                |> transitionDebuggerState (DebuggerState.ContinueRequestComplete DebuggerState.Success)
 
         ContinueRequestFail err ->
             ( model, Cmd.none )
+                |> transitionDebuggerState (DebuggerState.ContinueRequestComplete DebuggerState.Fail)
                 |> consoleMessage ("Continue request fail: " ++ toString err)
 
         ScrollInstructionIntoViewClick ->
@@ -184,8 +195,17 @@ update msg model =
             ( model, Cmd.none )
                 |> consoleMessage ("Continue request fail: " ++ toString err)
 
+        UnknownState ( state, input ) ->
+            ( model, Cmd.none )
+                |> consoleMessage ("Uh oh, the following state transition wasn't handled: " ++ (toString input) ++ " -> " ++ (toString state))
+
         NoOp ->
             ( model, Cmd.none )
+
+
+transitionDebuggerState : DebuggerState.Input -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+transitionDebuggerState smInput appInput =
+    DebuggerState.transition StepRequestFail StepRequestSuccess ContinueRequestFail ContinueRequestSuccess UnknownState smInput appInput
 
 
 clearCpuState : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -277,15 +297,6 @@ fetchInstructionsIfNeeded appInput =
 
             _ ->
                 appInput
-
-
-sendContinueRequest : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-sendContinueRequest appInput =
-    let
-        ( inputModel, inputCmd ) =
-            appInput
-    in
-        ( inputModel, Cmd.batch [ inputCmd, Continue.request ContinueRequestFail ContinueRequestSuccess ] )
 
 
 sendInstructionRequest : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
