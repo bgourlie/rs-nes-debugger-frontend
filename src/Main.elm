@@ -118,6 +118,7 @@ update msg model =
     case msg of
         DebuggerConnectionOpened name ->
             ( model, Cmd.none )
+                |> clearCpuState
                 |> consoleMessage ("Connected to debugger at " ++ name)
 
         DebuggerConnectionClosed _ ->
@@ -194,6 +195,25 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+clearCpuState : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+clearCpuState appInput =
+    let
+        ( model, cmd ) =
+            appInput
+
+        newModel =
+            { model
+                | cycles = 0
+                , instructions = []
+                , instructionOffsetMap = Dict.empty
+                , memory = ( 0, [] )
+                , registers = Registers.new
+                , breakpoints = Set.empty
+            }
+    in
+        ( newModel, cmd )
 
 
 scrollElementIntoView : String -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
