@@ -89,7 +89,9 @@ init =
 
 
 type Msg
-    = DebuggerCommandReceiveSuccess DebuggerCommand
+    = DebuggerConnectionOpened String
+    | DebuggerConnectionClosed String
+    | DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
     | ToggleBreakpointClick Int
     | ToggleBreakpointRequestSuccess ToggleBreakpoint.Message
@@ -114,6 +116,15 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        DebuggerConnectionOpened name ->
+            ( model, Cmd.none )
+                |> clearCpuState
+                |> consoleMessage ("Connected to debugger at " ++ name)
+
+        DebuggerConnectionClosed _ ->
+            ( model, Cmd.none )
+                |> consoleMessage ("Disconnected from debugger")
+
         DebuggerCommandReceiveSuccess debuggerCommand ->
             ( model, Cmd.none )
                 |> handleDebuggerCommand debuggerCommand
@@ -184,6 +195,25 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+clearCpuState : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+clearCpuState appInput =
+    let
+        ( model, cmd ) =
+            appInput
+
+        newModel =
+            { model
+                | cycles = 0
+                , instructions = []
+                , instructionOffsetMap = Dict.empty
+                , memory = ( 0, [] )
+                , registers = Registers.new
+                , breakpoints = Set.empty
+            }
+    in
+        ( newModel, cmd )
 
 
 scrollElementIntoView : String -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -294,7 +324,9 @@ handleBreakCondition breakReason snapshot appInput =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ WebSocket.listen wsDebuggerEndpoint <|
+        [ WebSocket.onOpen DebuggerConnectionOpened
+        , WebSocket.onClose DebuggerConnectionClosed
+        , WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
         , Ports.scrollEvent <| Ports.mapScrollEvent ScrollEventDecodeError ScrollEventReceived
         ]
