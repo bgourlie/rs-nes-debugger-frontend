@@ -4,7 +4,6 @@ import Http
 import Step
 import Task
 import Continue
-import Debug
 
 
 -- A state machine defining all the debugger states and transitions
@@ -136,10 +135,10 @@ transition stepFail stepSuccess continueFail continueSuccess unknownStateHandler
             appInput
 
         oldState =
-            Debug.log "old state" (inputModel.debuggerState)
+            inputModel.debuggerState
 
         newState =
-            Debug.log "new state" (updateDebuggerState oldState smInput)
+            updateDebuggerState oldState smInput
 
         newModel =
             { inputModel | debuggerState = newState }
