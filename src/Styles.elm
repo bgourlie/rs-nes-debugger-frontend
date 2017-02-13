@@ -40,6 +40,8 @@ type Class
     | Operand
     | Instructions
     | CurrentInstruction
+    | DebuggerConnected
+    | DebuggerNotConnected
 
 
 type Id
@@ -56,3 +58,5 @@ type Id
     | HexEditorBody
     | InstructionsContainer
     | Cycles
+    | StatusStrip
+    | HeaderControls

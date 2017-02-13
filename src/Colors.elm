@@ -91,3 +91,13 @@ hexEditorBackground =
 addressModeLiveValue : Css.Color
 addressModeLiveValue =
     hex "#ffc66d"
+
+
+statusStripConnectedColor : Css.Color
+statusStripConnectedColor =
+    hex "008800"
+
+
+statusStripDisconnectedColor : Css.Color
+statusStripDisconnectedColor =
+    hex "990000"

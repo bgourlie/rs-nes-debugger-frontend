@@ -17,7 +17,6 @@ type alias Model a =
 
 type DebuggerState
     = NotConnected
-    | Pausing
     | Paused
     | Stepping
     | Continuing
@@ -34,7 +33,6 @@ type Input
     = Connect
     | Disconnect
     | Pause
-    | PauseRequestComplete RequestResult
     | Step
     | StepRequestComplete RequestResult
     | Continue
@@ -55,19 +53,11 @@ updateDebuggerState oldState input =
                 _ ->
                     Unknown
 
-        Pausing ->
-            case input of
-                PauseRequestComplete Success ->
-                    Paused
-
-                PauseRequestComplete Fail ->
-                    Running
-
-                _ ->
-                    Unknown
-
         Paused ->
             case input of
+                Pause ->
+                    Paused
+
                 Disconnect ->
                     NotConnected
 
@@ -111,7 +101,7 @@ updateDebuggerState oldState input =
                     NotConnected
 
                 Pause ->
-                    Pausing
+                    Paused
 
                 _ ->
                     Unknown

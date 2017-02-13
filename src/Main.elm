@@ -263,12 +263,14 @@ handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
         Break reason snapshot ->
             appInput
+                |> transitionDebuggerState DebuggerState.Pause
                 |> fetchInstructionsIfNeeded
                 |> handleBreakCondition reason snapshot
                 |> \( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd )
 
         Crash reason snapshot ->
             appInput
+                |> transitionDebuggerState DebuggerState.Pause
                 |> \( outputModel, outputCmd ) ->
                     ( applySnapshot outputModel snapshot, outputCmd )
                         |> consoleMessage ("A crash has occurred: " ++ (crashReasonToString reason))
@@ -341,13 +343,16 @@ view : Model -> Html Msg
 view model =
     div [ id Styles.Container ]
         [ header []
-            [ Registers.view model
-            , div [ id Styles.DebuggerButtons ]
-                [ button [ class [ Styles.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
-                , button [ class [ Styles.Button ], onClick StepClick, title "Step" ] [ Icons.step ]
-                , button [ class [ Styles.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
+            [ div [ id Styles.HeaderControls ]
+                [ Registers.view model
+                , div [ id Styles.DebuggerButtons ]
+                    [ button [ class [ Styles.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
+                    , button [ class [ Styles.Button ], onClick StepClick, title "Step" ] [ Icons.step ]
+                    , button [ class [ Styles.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
+                    ]
+                , Byte.toggleDisplayView UpdateByteFormat model
                 ]
-            , Byte.toggleDisplayView UpdateByteFormat model
+            , div [ id Styles.StatusStrip, stripStyles model ] []
             ]
         , div [ id Styles.TwoColumn ]
             [ div [ id Styles.LeftColumn ]
@@ -367,6 +372,14 @@ view model =
         ]
 
 
+stripStyles : Model -> Attribute msg
+stripStyles model =
+    classList
+        [ ( Styles.DebuggerConnected, model.debuggerState /= DebuggerState.NotConnected )
+        , ( Styles.DebuggerNotConnected, model.debuggerState == DebuggerState.NotConnected )
+        ]
+
+
 styles : List Css.Snippet
 styles =
     [ Styles.id Styles.Container
@@ -376,18 +389,30 @@ styles =
         , Css.children
             [ Css.Elements.header
                 [ Css.property "flex" "0 1 auto"
-                , Css.width (Css.pct 100)
                 , Css.backgroundColor Colors.headerColor
-                , Css.borderBottom3 (Css.px 1) (Css.solid) Colors.headerBorder
-                , Css.padding (Css.px 5)
                 , Css.boxShadow5 (Css.px 0) (Css.px 2) (Css.px 2) (Css.px -2) (Css.rgba 0 0 0 0.4)
                 , Css.children
-                    [ Css.everything
-                        [ Css.display Css.inlineBlock
-                        , Css.marginLeft (Css.px 10)
-                        , Css.firstChild
-                            [ Css.marginLeft (Css.px 0)
+                    [ Styles.id Styles.HeaderControls
+                        [ Css.padding (Css.px 5)
+                        , Css.children
+                            [ Css.everything
+                                [ Css.display Css.inlineBlock
+                                , Css.marginLeft (Css.px 10)
+                                , Css.firstChild
+                                    [ Css.marginLeft (Css.px 0)
+                                    ]
+                                ]
                             ]
+                        ]
+                    , Styles.id Styles.StatusStrip
+                        [ Css.width (Css.pct 100)
+                        , Css.height (Css.px 2)
+                        ]
+                    , Styles.class Styles.DebuggerConnected
+                        [ Css.backgroundColor Colors.statusStripConnectedColor
+                        ]
+                    , Styles.class Styles.DebuggerNotConnected
+                        [ Css.backgroundColor Colors.statusStripDisconnectedColor
                         ]
                     ]
                 ]
