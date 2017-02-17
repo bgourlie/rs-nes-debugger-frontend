@@ -18,6 +18,8 @@ type AddressingMode
     | AbsoluteX Int
     | AbsoluteY Int
     | ZeroPageX Int
+    | ZeroPageY Int
+    | Indirect Int
     | Relative Int
     | Implied
     | Accumulator
@@ -59,6 +61,19 @@ getMemory memory registers am =
         ZeroPageX addr ->
             Just ( addr, getByte (addr + registers.x) memory )
 
+        ZeroPageY addr ->
+            Just ( addr, getByte (addr + registers.y) memory )
+
+        Indirect addr ->
+            let
+                targetAddr =
+                    getWord addr memory
+
+                value =
+                    getWord targetAddr memory
+            in
+                Just ( targetAddr, value )
+
         _ ->
             Nothing
 
@@ -90,6 +105,12 @@ view display am =
         ZeroPageX addr ->
             zeroPageXView display addr
 
+        ZeroPageY addr ->
+            zeroPageYView display addr
+
+        Indirect addr ->
+            indirectView display addr
+
         Relative addr ->
             relativeView display addr
 
@@ -115,6 +136,15 @@ indirectIndexedView display addr =
         [ span [] [ text "(" ]
         , asmByteView display addr
         , span [] [ text "),Y" ]
+        ]
+
+
+indirectView : Byte.Format -> Int -> Html msg
+indirectView display addr =
+    span []
+        [ span [] [ text "(" ]
+        , asmByteView display addr
+        , span [] [ text ")" ]
         ]
 
 
@@ -145,6 +175,14 @@ zeroPageXView display addr =
     span []
         [ asmByteView display addr
         , span [] [ text ",X" ]
+        ]
+
+
+zeroPageYView : Byte.Format -> Int -> Html msg
+zeroPageYView display addr =
+    span []
+        [ asmByteView display addr
+        , span [] [ text ",Y" ]
         ]
 
 
@@ -226,6 +264,12 @@ decoder =
 
                             "ZeroPageX" ->
                                 Json.succeed <| ZeroPageX op
+
+                            "ZeroPageY" ->
+                                Json.succeed <| ZeroPageY op
+
+                            "Indirect" ->
+                                Json.succeed <| Indirect op
 
                             "Relative" ->
                                 Json.succeed <| Relative op

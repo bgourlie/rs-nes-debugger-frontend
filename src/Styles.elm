@@ -38,6 +38,7 @@ type Class
     | AddressModeMemoryValue
     | Mnemonic
     | Operand
+    | UndefinedOpcode
     | Instructions
     | CurrentInstruction
     | DebuggerConnected

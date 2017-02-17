@@ -242,7 +242,7 @@ handleInstructionsResponse instructions appInput =
 
         instrMap =
             instructions
-                |> List.indexedMap (\index instr -> ( instr.offset, index ))
+                |> List.indexedMap (\index instr -> ( Instruction.getOffset instr, index ))
                 |> Dict.fromList
     in
         ( { inputModel | instructions = instructions, instructionOffsetMap = instrMap }, inputCmd )

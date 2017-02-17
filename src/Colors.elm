@@ -28,6 +28,11 @@ mnemonic =
     hex "#a5c25c"
 
 
+undefinedOpcode : Css.Color
+undefinedOpcode =
+    hex "#606366"
+
+
 gutterBackground : Css.Color
 gutterBackground =
     hex "#313335"

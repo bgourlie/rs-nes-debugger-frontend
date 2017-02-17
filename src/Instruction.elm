@@ -1,4 +1,4 @@
-module Instruction exposing (view, styles, decoder, request, Instruction, OffsetMap)
+module Instruction exposing (view, styles, decoder, request, getOffset, Instruction, OffsetMap)
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
@@ -21,11 +21,9 @@ import Colors
     Styles.helpers
 
 
-type alias Instruction =
-    { mnemonic : String
-    , addressingMode : AddressingMode.AddressingMode
-    , offset : Int
-    }
+type Instruction
+    = Known Int String AddressingMode.AddressingMode
+    | Undefined Int
 
 
 type alias OffsetMap =
@@ -46,11 +44,39 @@ type alias Model a =
 
 decoder : Decoder (List Instruction)
 decoder =
-    Json.list <|
-        Json.map3 Instruction
-            (field "mnemonic" Json.string)
-            (field "addressing_mode" AddressingMode.decoder)
-            (field "offset" Json.int)
+    Json.list instructionDecoder
+
+
+instructionDecoder : Decoder Instruction
+instructionDecoder =
+    (field "kind" Json.string)
+        |> Json.andThen
+            (\kind ->
+                case kind of
+                    "Known" ->
+                        knownDecoder
+
+                    "Undefined" ->
+                        undefinedDecoder
+
+                    _ ->
+                        Json.fail "Unexpected instruction kind"
+            )
+
+
+knownDecoder : Decoder Instruction
+knownDecoder =
+    Json.map3 (,,)
+        (field "offset" Json.int)
+        (field "mnemonic" Json.string)
+        (field "am" AddressingMode.decoder)
+        |> Json.andThen (\( offset, mnemonic, am ) -> Json.succeed (Known offset mnemonic am))
+
+
+undefinedDecoder : Decoder Instruction
+undefinedDecoder =
+    (field "offset" Json.int)
+        |> Json.andThen (\offset -> Json.succeed (Undefined offset))
 
 
 endpoint : String
@@ -77,65 +103,68 @@ request failHandler successHandler =
 view : (Int -> msg) -> Model a -> Html msg
 view breakpointClickHandler model =
     let
-        pc =
-            model.registers.pc
-
-        instructions =
-            model.instructions
-
-        instructionOffsetMap =
-            model.instructionOffsetMap
-
-        breakpoints =
-            model.breakpoints
-
-        byteFormat =
-            model.byteFormat
-
-        instructionsDisplayed =
-            model.instructionsDisplayed
-
         halfWindowSize =
-            floor <| (toFloat instructionsDisplayed) / 2.0
+            floor <| (toFloat model.instructionsDisplayed) / 2.0
 
         pivotIndex =
-            Maybe.withDefault 0 (Dict.get pc instructionOffsetMap)
+            Maybe.withDefault 0 (Dict.get model.registers.pc model.instructionOffsetMap)
 
         instructionsToDrop =
             max 0 (pivotIndex - halfWindowSize)
     in
         Html.table [ class [ Styles.Instructions ] ]
-            (instructions
+            (model.instructions
                 |> List.drop instructionsToDrop
-                |> List.take instructionsDisplayed
+                |> List.take model.instructionsDisplayed
                 |> List.map
                     (\instruction ->
                         let
-                            isCurrentInstruction =
-                                instruction.offset == pc
-
-                            addressingModeMemory =
-                                if isCurrentInstruction then
-                                    AddressingMode.getMemory model.memory model.registers instruction.addressingMode
-                                else
-                                    Nothing
+                            offset =
+                                getOffset instruction
                         in
-                            Html.tr ([ classList [ ( Styles.CurrentInstruction, isCurrentInstruction ) ] ])
+                            Html.tr ([ classList [ ( Styles.CurrentInstruction, offset == model.registers.pc ) ] ])
                                 [ Html.td [ class [ Styles.Gutter ] ]
-                                    [ Html.div [ class [ Styles.MemoryLocation ] ] [ Byte.view16 byteFormat instruction.offset ]
-                                    , Html.div [ breakpointClasses breakpoints instruction.offset, onClick <| breakpointClickHandler instruction.offset ]
+                                    [ Html.div [ class [ Styles.MemoryLocation ] ] [ Byte.view16 model.byteFormat offset ]
+                                    , Html.div [ breakpointClasses model.breakpoints offset, onClick <| breakpointClickHandler offset ]
                                         [ Icons.breakpoint
                                         ]
                                     ]
-                                , Html.td []
-                                    [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text instruction.mnemonic ]
-                                    , Html.span [] [ Html.text " " ]
-                                    , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view byteFormat instruction.addressingMode ]
-                                    , addressingModeMemoryView byteFormat addressingModeMemory
-                                    ]
+                                , instructionCell model instruction
                                 ]
                     )
             )
+
+
+getOffset : Instruction -> Int
+getOffset instr =
+    case instr of
+        Known offset _ _ ->
+            offset
+
+        Undefined offset ->
+            offset
+
+
+instructionCell : Model a -> Instruction -> Html msg
+instructionCell model instr =
+    case instr of
+        Known offset mnemonic addressingMode ->
+            let
+                amMemory =
+                    if offset == model.registers.pc then
+                        AddressingMode.getMemory model.memory model.registers addressingMode
+                    else
+                        Nothing
+            in
+                Html.td []
+                    [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
+                    , Html.span [] [ Html.text " " ]
+                    , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view model.byteFormat addressingMode ]
+                    , addressingModeMemoryView model.byteFormat amMemory
+                    ]
+
+        Undefined offset ->
+            Html.td [] [ Html.span [ class [ Styles.UndefinedOpcode ] ] [ Html.text "--" ] ]
 
 
 addressingModeMemoryView : Byte.Format -> Maybe ( Int, Int ) -> Html msg
@@ -212,6 +241,10 @@ styles =
         ]
     , Styles.class Styles.Mnemonic
         [ Css.color Colors.mnemonic
+        , Css.paddingLeft (Css.em 0.5)
+        ]
+    , Styles.class Styles.UndefinedOpcode
+        [ Css.color Colors.undefinedOpcode
         , Css.paddingLeft (Css.em 0.5)
         ]
     ]
