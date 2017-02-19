@@ -57,6 +57,7 @@ main =
 type alias Model =
     { debuggerState : DebuggerState.DebuggerState
     , messages : List ( String, Int )
+    , consoleInput : String
     , cycles : Int
     , instructions : List Instruction.Instruction
     , instructionsDisplayed : Int
@@ -75,6 +76,7 @@ init =
             { debuggerState = DebuggerState.NotConnected
             , messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
+            , consoleInput = ""
             , instructions = []
             , instructionsDisplayed = 512
             , instructionOffsetMap = Dict.empty
@@ -111,6 +113,8 @@ type Msg
     | UpdateByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
+    | UpdateConsoleInput String
+    | SubmitConsoleInput
     | UnknownState ( DebuggerState.DebuggerState, DebuggerState.Input )
     | NoOp
 
@@ -194,6 +198,18 @@ update msg model =
         InstructionRequestFail err ->
             ( model, Cmd.none )
                 |> consoleMessage ("Continue request fail: " ++ toString err)
+
+        UpdateConsoleInput input ->
+            ( { model | consoleInput = input }, Cmd.none )
+
+        SubmitConsoleInput ->
+            case model.consoleInput of
+                "" ->
+                    ( model, Cmd.none )
+
+                _ ->
+                    ( { model | consoleInput = "" }, Cmd.none )
+                        |> consoleMessage ("Console input submitted: " ++ model.consoleInput)
 
         UnknownState ( state, input ) ->
             ( model, Cmd.none )
@@ -362,7 +378,7 @@ view model =
                 ]
             , div [ id Styles.RightColumn ]
                 [ div [ id Styles.ConsoleContainer ]
-                    [ Console.view model
+                    [ Console.view NoOp UpdateConsoleInput SubmitConsoleInput model
                     ]
                 , div [ id Styles.HexEditorContainer ]
                     [ HexEditor.view model

@@ -6,6 +6,8 @@ import Dom
 import Dom.Scroll
 import Html exposing (Html)
 import Html.Attributes
+import Html.Events
+import Json.Decode as Json
 import Css
 import Css.Elements
 import Styles
@@ -17,7 +19,10 @@ import Colors
 
 
 type alias Model a =
-    { a | messages : List ( String, Int ) }
+    { a
+        | messages : List ( String, Int )
+        , consoleInput : String
+    }
 
 
 
@@ -128,8 +133,8 @@ styles =
     ]
 
 
-view : Model a -> Html msg
-view { messages } =
+view : msg -> (String -> msg) -> msg -> Model a -> Html msg
+view nop consoleInputUpdated consoleInputSubmitted { messages, consoleInput } =
     Html.div [ id Styles.Console ]
         [ Html.div [ id Styles.ConsoleLines ]
             (messages
@@ -146,9 +151,28 @@ view { messages } =
             [ id Styles.ConsoleInput
             , Html.Attributes.type_ "text"
             , Html.Attributes.placeholder "Enter debugger commands here..."
+            , Html.Events.onInput consoleInputUpdated
+            , Html.Attributes.value consoleInput
+            , onEnter nop consoleInputSubmitted
             ]
             []
         ]
+
+
+onEnter : msg -> msg -> Html.Attribute msg
+onEnter nop consoleInputSubmitted =
+    Html.Events.on "keyup"
+        (Json.map
+            (\keyCode ->
+                case keyCode of
+                    13 ->
+                        consoleInputSubmitted
+
+                    _ ->
+                        nop
+            )
+            Html.Events.keyCode
+        )
 
 
 messageRepeatsClasses : Int -> Html.Attribute msg
