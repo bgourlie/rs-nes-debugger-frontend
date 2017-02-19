@@ -65,6 +65,7 @@ type alias Model =
     , instructionOffsetMap : Instruction.OffsetMap
     , instructionPivot : Int
     , memory : MemorySnapshot.MemorySnapshot
+    , memoryViewOffset : Int
     , registers : Registers.Registers
     , breakpoints : Breakpoints.Breakpoints
     , byteFormat : Byte.Format
@@ -84,6 +85,7 @@ init =
             , instructionOffsetMap = Dict.empty
             , instructionPivot = 0
             , memory = ( 0, [] )
+            , memoryViewOffset = 0
             , registers = Registers.new
             , breakpoints = Set.empty
             , byteFormat = Byte.Hex
@@ -246,8 +248,8 @@ executeConsoleCommand ( model, cmd ) =
                             ConsoleCommand.JumpToInstruction offset ->
                                 updateInstructionPivot offset ( updatedModel, cmd )
 
-                            _ ->
-                                consoleMessage ("Unimplemented console command: " ++ (toString consoleCommand)) ( updatedModel, cmd )
+                            ConsoleCommand.JumpToMemory offset ->
+                                updateMemoryViewOffset offset ( updatedModel, cmd )
 
                 Err _ ->
                     ( model, cmd )
@@ -269,6 +271,15 @@ updateInstructionPivot pivotOffset ( model, cmd ) =
 
             Nothing ->
                 consoleMessage ("No instruction near offset 0x" ++ (toHex pivotOffset)) ( model, cmd )
+
+
+updateMemoryViewOffset : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updateMemoryViewOffset offset ( model, cmd ) =
+    if offset >= 0 && offset <= 0xFFFF then
+        ( { model | memoryViewOffset = offset }, cmd )
+            |> consoleMessage ("Displaying memory starting at offset 0x" ++ (toHex offset))
+    else
+        consoleMessage "Invalid offset specified" ( model, cmd )
 
 
 transitionDebuggerState : DebuggerState.Input -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )

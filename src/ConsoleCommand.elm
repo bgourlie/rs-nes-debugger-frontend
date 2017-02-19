@@ -11,8 +11,8 @@ type ConsoleCommand
 
 parse : String -> Result String ConsoleCommand
 parse input =
-    Parser.run
-        (Parser.oneOf
+    run
+        (oneOf
             [ parseBreakpointCommand
             , parseJumpToInstructionCommand
             , parseJumpToMemoryCommand
@@ -43,7 +43,11 @@ parseJumpToMemoryCommand =
     succeed JumpToMemory
         |. keyword "jmpm"
         |. spaces
-        |= int
+        |= (oneOf
+                [ int
+                , (keyword "stack") |> andThen (\_ -> (succeed 0x0100))
+                ]
+           )
 
 
 spaces : Parser ()

@@ -19,6 +19,7 @@ import MemorySnapshot
 type alias Model a =
     { a
         | memory : MemorySnapshot.MemorySnapshot
+        , memoryViewOffset : Int
         , byteFormat : Byte.Format
     }
 
@@ -31,11 +32,6 @@ bytesPerRow =
 windowSize : Int
 windowSize =
     2048
-
-
-startOffset : Int
-startOffset =
-    0x00
 
 
 view : Model a -> Html msg
@@ -60,6 +56,9 @@ intoRows model =
     let
         ( _, bytes ) =
             model.memory
+
+        startOffset =
+            model.memoryViewOffset
     in
         bytes
             |> List.drop startOffset
