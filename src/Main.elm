@@ -436,8 +436,7 @@ styles =
         , Css.overflow Css.auto
         ]
     , Styles.id Styles.ConsoleContainer
-        [ Css.overflowY Css.auto
-        , Css.backgroundColor Colors.consoleBackground
+        [ Css.backgroundColor Colors.consoleBackground
         , Css.displayFlex
         , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
         ]

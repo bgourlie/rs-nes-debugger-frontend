@@ -20,8 +20,7 @@ id idType mixins =
 
 
 type Class
-    = List
-    | Button
+    = Button
     | MessageRepeats
     | MessageRepeatsShow
     | RowOffset
@@ -41,6 +40,7 @@ type Class
     | UndefinedOpcode
     | Instructions
     | CurrentInstruction
+    | ConsoleLine
     | DebuggerConnected
     | DebuggerNotConnected
 
@@ -55,6 +55,8 @@ type Id
     | RightColumn
     | ByteFormatToggle
     | Console
+    | ConsoleLines
+    | ConsoleInput
     | HexEditor
     | HexEditorBody
     | InstructionsContainer

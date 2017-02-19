@@ -18,6 +18,16 @@ consoleBackground =
     hex "#111111"
 
 
+consoleInputBackground : Css.Color
+consoleInputBackground =
+    hex "#222222"
+
+
+consoleInputText : Css.Color
+consoleInputText =
+    hex "#dddddd"
+
+
 currentLine : Css.Color
 currentLine =
     hex "#2d6099"
