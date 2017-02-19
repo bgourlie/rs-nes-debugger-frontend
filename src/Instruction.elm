@@ -35,6 +35,7 @@ type alias Model a =
         | instructions : List Instruction
         , instructionsDisplayed : Int
         , instructionOffsetMap : OffsetMap
+        , instructionPivot : Int
         , registers : Registers.Registers
         , memory : MemorySnapshot.MemorySnapshot
         , breakpoints : Breakpoints.Breakpoints
@@ -107,7 +108,7 @@ view breakpointClickHandler model =
             floor <| (toFloat model.instructionsDisplayed) / 2.0
 
         pivotIndex =
-            Maybe.withDefault 0 (Dict.get model.registers.pc model.instructionOffsetMap)
+            Maybe.withDefault 0 (Dict.get model.instructionPivot model.instructionOffsetMap)
 
         instructionsToDrop =
             max 0 (pivotIndex - halfWindowSize)
