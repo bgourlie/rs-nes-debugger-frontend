@@ -15,12 +15,7 @@ import Colors
 
 
 commonStyles =
-    [ (.) Styles.List
-        [ Css.listStyleType Css.none
-        , Css.padding (Css.px 0)
-        , Css.margin (Css.px 0)
-        ]
-    , (.) Styles.Button
+    [ (.) Styles.Button
         [ Css.position Css.relative
         , Css.padding Css.zero
         , Css.border3 (Css.px 1) Css.solid Css.transparent

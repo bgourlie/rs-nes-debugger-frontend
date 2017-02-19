@@ -11,6 +11,7 @@ import WebSocket
 import Css
 import Css.Elements
 import ParseInt exposing (toHex)
+import ConsoleCommand
 import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
 import Instruction
 import CpuSnapshot exposing (CpuSnapshot)
@@ -57,10 +58,12 @@ main =
 type alias Model =
     { debuggerState : DebuggerState.DebuggerState
     , messages : List ( String, Int )
+    , consoleInput : String
     , cycles : Int
     , instructions : List Instruction.Instruction
     , instructionsDisplayed : Int
     , instructionOffsetMap : Instruction.OffsetMap
+    , instructionPivot : Int
     , memory : MemorySnapshot.MemorySnapshot
     , registers : Registers.Registers
     , breakpoints : Breakpoints.Breakpoints
@@ -75,9 +78,11 @@ init =
             { debuggerState = DebuggerState.NotConnected
             , messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
+            , consoleInput = ""
             , instructions = []
             , instructionsDisplayed = 512
             , instructionOffsetMap = Dict.empty
+            , instructionPivot = 0
             , memory = ( 0, [] )
             , registers = Registers.new
             , breakpoints = Set.empty
@@ -96,7 +101,7 @@ type Msg
     | DebuggerConnectionClosed String
     | DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
-    | ToggleBreakpointClick Int
+    | ToggleBreakpoint Int
     | ToggleBreakpointRequestSuccess ToggleBreakpoint.Message
     | ToggleBreakpointRequestFail Http.Error
     | StepClick
@@ -105,12 +110,14 @@ type Msg
     | ContinueClick
     | ContinueRequestSuccess Continue.Model
     | ContinueRequestFail Http.Error
-    | ScrollInstructionIntoViewClick
+    | ScrollInstructionIntoView
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
     | UpdateByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
+    | UpdateConsoleInput String
+    | SubmitConsoleCommand
     | UnknownState ( DebuggerState.DebuggerState, DebuggerState.Input )
     | NoOp
 
@@ -137,11 +144,19 @@ update msg model =
             ( model, Cmd.none )
                 |> consoleMessage ("Unable to receive debugger command: " ++ msg)
 
-        ToggleBreakpointClick address ->
+        ToggleBreakpoint address ->
             ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
 
         ToggleBreakpointRequestSuccess resp ->
-            ( { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, Cmd.none )
+            let
+                message =
+                    if resp.isSet then
+                        "Breakpoint set @ 0x" ++ (toHex resp.offset)
+                    else
+                        "Breakpoint unset @ 0x" ++ (toHex resp.offset)
+            in
+                ( { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, Cmd.none )
+                    |> consoleMessage message
 
         ToggleBreakpointRequestFail err ->
             consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
@@ -173,8 +188,9 @@ update msg model =
                 |> transitionDebuggerState (DebuggerState.ContinueRequestComplete DebuggerState.Fail)
                 |> consoleMessage ("Continue request fail: " ++ toString err)
 
-        ScrollInstructionIntoViewClick ->
+        ScrollInstructionIntoView ->
             ( model, Cmd.none )
+                |> updateInstructionPivot model.registers.pc
                 |> scrollElementIntoView (toString Styles.CurrentInstruction)
 
         ScrollConsoleSucceed ->
@@ -195,12 +211,64 @@ update msg model =
             ( model, Cmd.none )
                 |> consoleMessage ("Continue request fail: " ++ toString err)
 
+        UpdateConsoleInput input ->
+            ( { model | consoleInput = input }, Cmd.none )
+
+        SubmitConsoleCommand ->
+            ( model, Cmd.none )
+                |> executeConsoleCommand
+
         UnknownState ( state, input ) ->
             ( model, Cmd.none )
                 |> consoleMessage ("Uh oh, the following state transition wasn't handled: " ++ (toString input) ++ " -> " ++ (toString state))
 
         NoOp ->
             ( model, Cmd.none )
+
+
+executeConsoleCommand : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+executeConsoleCommand ( model, cmd ) =
+    case model.consoleInput of
+        "" ->
+            ( model, cmd )
+
+        _ ->
+            case ConsoleCommand.parse model.consoleInput of
+                Ok consoleCommand ->
+                    let
+                        updatedModel =
+                            { model | consoleInput = "" }
+                    in
+                        case consoleCommand of
+                            ConsoleCommand.ToggleBreakpoint offset ->
+                                update (ToggleBreakpoint offset) updatedModel
+
+                            ConsoleCommand.JumpToInstruction offset ->
+                                updateInstructionPivot offset ( updatedModel, cmd )
+
+                            _ ->
+                                consoleMessage ("Unimplemented console command: " ++ (toString consoleCommand)) ( updatedModel, cmd )
+
+                Err _ ->
+                    ( model, cmd )
+                        |> consoleMessage "Unknown console command"
+
+
+updateInstructionPivot : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updateInstructionPivot pivotOffset ( model, cmd ) =
+    let
+        nearestInstructionOffset =
+            Dict.keys model.instructionOffsetMap
+                |> List.filter (\o -> (abs (o - pivotOffset)) < 4)
+                |> List.head
+    in
+        case nearestInstructionOffset of
+            Just instructionOffset ->
+                ( { model | instructionPivot = instructionOffset }, cmd )
+                    |> consoleMessage ("Displaying instruction at 0x" ++ (toHex instructionOffset))
+
+            Nothing ->
+                consoleMessage ("No instruction near offset 0x" ++ (toHex pivotOffset)) ( model, cmd )
 
 
 transitionDebuggerState : DebuggerState.Input -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -282,6 +350,7 @@ applySnapshot model snapshot =
         | registers = snapshot.registers
         , cycles = snapshot.cycles
         , memory = snapshot.memory
+        , instructionPivot = snapshot.registers.pc
     }
 
 
@@ -348,7 +417,7 @@ view model =
                 , div [ id Styles.DebuggerButtons ]
                     [ button [ class [ Styles.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
                     , button [ class [ Styles.Button ], onClick StepClick, title "Step" ] [ Icons.step ]
-                    , button [ class [ Styles.Button ], onClick ScrollInstructionIntoViewClick, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
+                    , button [ class [ Styles.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
                     ]
                 , Byte.toggleDisplayView UpdateByteFormat model
                 ]
@@ -357,12 +426,12 @@ view model =
         , div [ id Styles.TwoColumn ]
             [ div [ id Styles.LeftColumn ]
                 [ div [ id Styles.InstructionsContainer ]
-                    [ Instruction.view (\address -> ToggleBreakpointClick address) model
+                    [ Instruction.view (\address -> ToggleBreakpoint address) model
                     ]
                 ]
             , div [ id Styles.RightColumn ]
                 [ div [ id Styles.ConsoleContainer ]
-                    [ Console.view model
+                    [ Console.view NoOp UpdateConsoleInput SubmitConsoleCommand model
                     ]
                 , div [ id Styles.HexEditorContainer ]
                     [ HexEditor.view model
@@ -436,8 +505,7 @@ styles =
         , Css.overflow Css.auto
         ]
     , Styles.id Styles.ConsoleContainer
-        [ Css.overflowY Css.auto
-        , Css.backgroundColor Colors.consoleBackground
+        [ Css.backgroundColor Colors.consoleBackground
         , Css.displayFlex
         , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
         ]
