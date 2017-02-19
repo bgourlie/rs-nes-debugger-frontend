@@ -68,7 +68,10 @@ type alias Model =
     , memoryViewOffset : Int
     , registers : Registers.Registers
     , breakpoints : Breakpoints.Breakpoints
-    , byteFormat : Byte.Format
+    , memoryByteFormat : Byte.Format
+    , registersByteFormat : Byte.Format
+    , offsetByteFormat : Byte.Format
+    , operandByteFormat : Byte.Format
     }
 
 
@@ -88,7 +91,10 @@ init =
             , memoryViewOffset = 0
             , registers = Registers.new
             , breakpoints = Set.empty
-            , byteFormat = Byte.Hex
+            , memoryByteFormat = Byte.Hex
+            , registersByteFormat = Byte.Hex
+            , offsetByteFormat = Byte.Hex
+            , operandByteFormat = Byte.Hex
             }
     in
         ( model, Cmd.none )
@@ -115,7 +121,7 @@ type Msg
     | ScrollInstructionIntoView
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
-    | UpdateByteFormat Byte.Format
+    | UpdateMemoryByteFormat Byte.Format
     | InstructionRequestSuccess (List Instruction.Instruction)
     | InstructionRequestFail Http.Error
     | UpdateConsoleInput String
@@ -201,8 +207,8 @@ update msg model =
         ScrollConsoleFail _ ->
             ( model, Cmd.none )
 
-        UpdateByteFormat byteFormat ->
-            ( { model | byteFormat = byteFormat }, Cmd.none )
+        UpdateMemoryByteFormat byteFormat ->
+            ( { model | memoryByteFormat = byteFormat }, Cmd.none )
 
         InstructionRequestSuccess instructions ->
             ( model, Cmd.none )
@@ -242,6 +248,22 @@ executeConsoleCommand ( model, cmd ) =
                             { model | consoleInput = "" }
                     in
                         case consoleCommand of
+                            ConsoleCommand.SetOffsetByteView byteFormat ->
+                                ( { updatedModel | offsetByteFormat = byteFormat }, cmd )
+                                    |> consoleMessage ("Updated offset byte format to " ++ (toString byteFormat))
+
+                            ConsoleCommand.SetMemoryByteView byteFormat ->
+                                ( { updatedModel | memoryByteFormat = byteFormat }, cmd )
+                                    |> consoleMessage ("Updated memory byte format to " ++ (toString byteFormat))
+
+                            ConsoleCommand.SetOperandByteView byteFormat ->
+                                ( { updatedModel | operandByteFormat = byteFormat }, cmd )
+                                    |> consoleMessage ("Updated operand byte format to " ++ (toString byteFormat))
+
+                            ConsoleCommand.SetRegistersByteView byteFormat ->
+                                ( { updatedModel | registersByteFormat = byteFormat }, cmd )
+                                    |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
+
                             ConsoleCommand.ToggleBreakpoint offset ->
                                 update (ToggleBreakpoint offset) updatedModel
 
@@ -430,7 +452,6 @@ view model =
                     , button [ class [ Styles.Button ], onClick StepClick, title "Step" ] [ Icons.step ]
                     , button [ class [ Styles.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
                     ]
-                , Byte.toggleDisplayView UpdateByteFormat model
                 ]
             , div [ id Styles.StatusStrip, stripStyles model ] []
             ]
@@ -473,8 +494,7 @@ styles =
                 , Css.boxShadow5 (Css.px 0) (Css.px 2) (Css.px 2) (Css.px -2) (Css.rgba 0 0 0 0.4)
                 , Css.children
                     [ Styles.id Styles.HeaderControls
-                        [ Css.padding (Css.px 5)
-                        , Css.children
+                        [ Css.children
                             [ Css.everything
                                 [ Css.display Css.inlineBlock
                                 , Css.marginLeft (Css.px 10)

@@ -2,6 +2,7 @@ module AddressingMode exposing (decoder, view, getMemory, AddressingMode)
 
 import Html exposing (span, text, Html)
 import Bitwise
+import ParseInt exposing (toHex)
 import Json.Decode as Json exposing (field, Decoder)
 import ParseInt exposing (toHex)
 import Byte
@@ -227,6 +228,9 @@ asmByteView display byte =
 
                 Byte.Dec ->
                     toString byte
+
+                Byte.Ascii ->
+                    "'" ++ (Byte.asciiValue byte) ++ "'"
     in
         span [] [ text str ]
 

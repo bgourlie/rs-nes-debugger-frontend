@@ -20,7 +20,8 @@ type alias Model a =
     { a
         | memory : MemorySnapshot.MemorySnapshot
         , memoryViewOffset : Int
-        , byteFormat : Byte.Format
+        , offsetByteFormat : Byte.Format
+        , memoryByteFormat : Byte.Format
     }
 
 
@@ -41,7 +42,7 @@ view model =
             (th [ class [ Styles.OffsetColumn ] ] [ text "Offset" ]
                 :: ((bytesPerRow - 1)
                         |> List.range 0
-                        |> List.map (\offset -> th [] [ text <| offsetHeaderDisplay model.byteFormat offset ])
+                        |> List.map (\offset -> th [] [ offsetHeaderDisplay model offset ])
                    )
             )
     in
@@ -49,6 +50,26 @@ view model =
             [ thead [] [ tr [] offsetHeaderCells ]
             , tbody [ id Styles.HexEditorBody ] (intoRows model)
             ]
+
+
+offsetHeaderDisplay : Model a -> Int -> Html msg
+offsetHeaderDisplay model val =
+    let
+        padding =
+            case model.memoryByteFormat of
+                Byte.Dec ->
+                    3
+
+                _ ->
+                    2
+    in
+        case model.offsetByteFormat of
+            Byte.Dec ->
+                Html.text (String.padLeft padding '0' (toString val))
+
+            _ ->
+                -- default to hex
+                Html.text (String.padLeft padding '0' (toHex val))
 
 
 intoRows : Model a -> List (Html msg)
@@ -67,26 +88,53 @@ intoRows model =
             |> List.map2 (,) (List.range 0 (floor (toFloat windowSize / toFloat bytesPerRow)))
             |> List.map
                 (\( rowOffset, row ) ->
-                    tr [ class [ Styles.BytesRow ] ]
-                        (td [ class [ Styles.OffsetColumn, Styles.RowOffset ] ] [ Byte.view16 model.byteFormat (startOffset + (rowOffset * bytesPerRow)) ]
-                            :: (List.map
-                                    (\byte ->
-                                        td [] [ text <| String.padLeft 2 '0' (toHex byte) ]
-                                    )
-                                    row
-                               )
-                        )
+                    let
+                        rowOffset1 =
+                            startOffset + (rowOffset * bytesPerRow)
+                    in
+                        tr [ class [ Styles.BytesRow ] ]
+                            (td [ class [ Styles.OffsetColumn, Styles.RowOffset ] ] [ offsetView model.offsetByteFormat rowOffset1 ]
+                                :: (List.map
+                                        (\byte ->
+                                            td [] [ memoryView model byte ]
+                                        )
+                                        row
+                                   )
+                            )
                 )
 
 
-offsetHeaderDisplay : Byte.Format -> Int -> String
-offsetHeaderDisplay display val =
-    case display of
-        Byte.Hex ->
-            String.padLeft 2 '0' (toHex val)
+offsetView : Byte.Format -> Int -> Html msg
+offsetView display byte =
+    let
+        str =
+            case display of
+                Byte.Dec ->
+                    String.padLeft 5 '0' (toString byte)
 
-        Byte.Dec ->
-            String.padLeft 2 '0' (toString val)
+                _ ->
+                    -- Default to hex display
+                    "0x" ++ String.padLeft 4 '0' (toHex byte)
+    in
+        text str
+
+
+memoryView : Model a -> Int -> Html msg
+memoryView model byte =
+    let
+        str =
+            case model.memoryByteFormat of
+                Byte.Dec ->
+                    String.padLeft 3 '0' (toString byte)
+
+                Byte.Hex ->
+                    -- Default to hex display
+                    String.padLeft 2 '0' (toHex byte)
+
+                Byte.Ascii ->
+                    "." ++ (Byte.asciiValue byte)
+    in
+        text str
 
 
 styles : List Css.Snippet
@@ -102,6 +150,7 @@ styles =
             [ Css.Elements.thead
                 [ Css.display Css.block
                 , Css.property "flex" "0 1 auto"
+                , Css.overflow Css.auto
                 , Css.color Colors.hexEditorOffsetColor
                 ]
             , Css.Elements.tbody
@@ -118,7 +167,7 @@ styles =
         , Css.property "user-select" "none"
         ]
     , Styles.class Styles.OffsetColumn
-        [ Css.width (Css.ch 8)
+        [ Css.width (Css.ch 9)
         , Css.textAlign Css.left
         ]
     , Styles.class Styles.BytesRow

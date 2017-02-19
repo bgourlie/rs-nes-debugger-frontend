@@ -60,7 +60,6 @@ css =
             , Main.styles
             , Instruction.styles
             , Console.styles
-            , Byte.styles
             , HexEditor.styles
             , Icons.styles
             ]

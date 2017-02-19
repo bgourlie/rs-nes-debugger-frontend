@@ -7,6 +7,7 @@ import List
 import Dict exposing (Dict)
 import Json.Decode as Json exposing (Decoder, field)
 import Css
+import ParseInt exposing (toHex)
 import Styles
 import Registers
 import Byte
@@ -39,7 +40,9 @@ type alias Model a =
         , registers : Registers.Registers
         , memory : MemorySnapshot.MemorySnapshot
         , breakpoints : Breakpoints.Breakpoints
-        , byteFormat : Byte.Format
+        , offsetByteFormat : Byte.Format
+        , operandByteFormat : Byte.Format
+        , memoryByteFormat : Byte.Format
     }
 
 
@@ -125,7 +128,7 @@ view breakpointClickHandler model =
                         in
                             Html.tr ([ classList [ ( Styles.CurrentInstruction, offset == model.registers.pc ) ] ])
                                 [ Html.td [ class [ Styles.Gutter ] ]
-                                    [ Html.div [ class [ Styles.MemoryLocation ] ] [ Byte.view16 model.byteFormat offset ]
+                                    [ Html.div [ class [ Styles.MemoryLocation ] ] [ memoryView model.offsetByteFormat offset ]
                                     , Html.div [ breakpointClasses model.breakpoints offset, onClick <| breakpointClickHandler offset ]
                                         [ Icons.breakpoint
                                         ]
@@ -159,9 +162,9 @@ instructionCell model instr =
             in
                 Html.td []
                     [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
-                    , Html.span [] [ Html.text " " ]
-                    , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view model.byteFormat addressingMode ]
-                    , addressingModeMemoryView model.byteFormat amMemory
+                    , Html.text " "
+                    , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view model.operandByteFormat addressingMode ]
+                    , addressingModeMemoryView model.memoryByteFormat amMemory
                     ]
 
         Undefined offset ->
@@ -179,16 +182,46 @@ addressingModeMemoryView byteFormat amMemory =
                 Html.span [ class [ Styles.AddressModeValues ] ]
                     [ Html.span [ class [ Styles.AddressModeMemoryLocation ] ]
                         [ Html.text "Target: "
-                        , Byte.view16 byteFormat targetAddr
+                        , memoryView byteFormat targetAddr
                         ]
                     , Html.span [ class [ Styles.AddressModeMemoryValue ] ]
                         [ Html.text "Value: "
-                        , Byte.view8 byteFormat targetValue
+                        , valueView byteFormat targetValue
                         ]
                     ]
 
         Nothing ->
-            Html.span [] []
+            Html.text ""
+
+
+memoryView : Byte.Format -> Int -> Html msg
+memoryView display byte =
+    let
+        str =
+            case display of
+                Byte.Dec ->
+                    String.padLeft 5 '0' (toString byte)
+
+                _ ->
+                    -- Default to hex display
+                    "0x" ++ String.padLeft 4 '0' (toHex byte)
+    in
+        Html.span [] [ Html.text str ]
+
+
+valueView : Byte.Format -> Int -> Html msg
+valueView display byte =
+    let
+        str =
+            case display of
+                Byte.Dec ->
+                    String.padLeft 3 '0' (toString byte)
+
+                _ ->
+                    -- Default to hex
+                    "0x" ++ String.padLeft 4 '0' (toHex byte)
+    in
+        Html.span [] [ Html.text str ]
 
 
 styles : List Css.Snippet
@@ -197,8 +230,6 @@ styles =
         [ Css.fontFamilies [ "monospace" ]
         , Css.fontSize (Css.em 1.0)
         , Css.property "border-spacing" "0"
-        , Css.height (Css.pct 100)
-        , Css.width (Css.pct 100)
         , Css.children
             [ Styles.class Styles.CurrentInstruction
                 [ Css.backgroundColor Colors.currentLine
@@ -210,7 +241,6 @@ styles =
         , Css.backgroundColor Colors.gutterBackground
         , Css.borderRight3 (Css.px 1) Css.solid Colors.gutterBorder
         , Css.paddingRight (Css.em 0.5)
-        , Css.width (Css.pct 1)
         , Css.whiteSpace Css.noWrap
         , Css.property "user-select" "none"
         ]
