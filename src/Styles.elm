@@ -48,6 +48,7 @@ type Class
     | ConsoleLine
     | DebuggerConnected
     | DebuggerNotConnected
+    | ConsoleInputDisplayed
 
 
 type Id
@@ -57,7 +58,6 @@ type Id
     | ConsoleContainer
     | HexEditorContainer
     | RightColumn
-    | Console
     | ConsoleLines
     | ConsoleInput
     | HexEditor

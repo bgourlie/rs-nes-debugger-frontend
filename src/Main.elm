@@ -8,6 +8,7 @@ import Set exposing (Set)
 import Dict exposing (Dict)
 import Http
 import WebSocket
+import Json.Decode as Json
 import Css
 import Css.Elements
 import Keyboard
@@ -28,6 +29,7 @@ import Byte
 import Breakpoints
 import Icons
 import HexEditor
+import Task
 import MemorySnapshot
 import Instruction
 import Styles
@@ -68,6 +70,7 @@ type alias Model =
     , memory : MemorySnapshot.MemorySnapshot
     , memoryViewOffset : Int
     , registers : Registers.Registers
+    , showConsoleInput : Bool
     , breakpoints : Breakpoints.Breakpoints
     , memoryByteFormat : Byte.Format
     , registersByteFormat : Byte.Format
@@ -92,6 +95,7 @@ init =
             , memoryViewOffset = 0
             , registers = Registers.new
             , breakpoints = Set.empty
+            , showConsoleInput = False
             , memoryByteFormat = Byte.Hex
             , registersByteFormat = Byte.Hex
             , offsetByteFormat = Byte.Hex
@@ -127,6 +131,7 @@ type Msg
     | InstructionRequestFail Http.Error
     | UpdateConsoleInput String
     | SubmitConsoleCommand
+    | SetDisplayConsoleInput Bool
     | KeyPressed Int
     | UnknownState ( DebuggerState.DebuggerState, DebuggerState.Input )
     | NoOp
@@ -232,6 +237,16 @@ update msg model =
             ( model, Cmd.none )
                 |> handleKeyPress keyCode
 
+        SetDisplayConsoleInput shouldShow ->
+            let
+                task =
+                    if shouldShow then
+                        Dom.focus (toString Styles.ConsoleInput)
+                    else
+                        Dom.blur (toString Styles.ConsoleInput)
+            in
+                ( { model | showConsoleInput = shouldShow }, Task.attempt (\_ -> NoOp) task )
+
         UnknownState ( state, input ) ->
             ( model, Cmd.none )
                 |> consoleMessage ("Uh oh, the following state transition wasn't handled: " ++ (toString input) ++ " -> " ++ (toString state))
@@ -243,6 +258,14 @@ update msg model =
 handleKeyPress : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleKeyPress keyCode ( model, cmd ) =
     case keyCode of
+        191 ->
+            -- "/" for displaying console input
+            let
+                ( newModel, newCmd ) =
+                    update (SetDisplayConsoleInput True) model
+            in
+                ( newModel, Cmd.batch [ cmd, newCmd ] )
+
         83 ->
             -- "s" for step
             let
@@ -499,14 +522,44 @@ view model =
                 ]
             , div [ id Styles.RightColumn ]
                 [ div [ id Styles.ConsoleContainer ]
-                    [ Console.view NoOp UpdateConsoleInput SubmitConsoleCommand model
+                    [ Console.view model
                     ]
                 , div [ id Styles.HexEditorContainer ]
                     [ HexEditor.view model
                     ]
                 ]
             ]
+        , input
+            [ id Styles.ConsoleInput
+            , classList [ ( Styles.ConsoleInputDisplayed, model.showConsoleInput ) ]
+            , Html.Attributes.type_ "text"
+            , Html.Events.onInput UpdateConsoleInput
+            , Html.Events.onBlur (SetDisplayConsoleInput False)
+            , Html.Attributes.value model.consoleInput
+            , handleInput
+            ]
+            []
         ]
+
+
+handleInput : Html.Attribute Msg
+handleInput =
+    Html.Events.onWithOptions "keyup"
+        { stopPropagation = True, preventDefault = False }
+        (Json.map
+            (\keyCode ->
+                case keyCode of
+                    13 ->
+                        SubmitConsoleCommand
+
+                    27 ->
+                        SetDisplayConsoleInput False
+
+                    _ ->
+                        NoOp
+            )
+            Html.Events.keyCode
+        )
 
 
 styles : List Css.Snippet
@@ -564,7 +617,7 @@ styles =
                                 ]
                             , Styles.id Styles.HexEditorContainer
                                 [ Css.displayFlex
-                                , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
+                                , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
                                 , Css.overflowY Css.auto
                                 , Css.position Css.relative
                                 ]
@@ -572,6 +625,26 @@ styles =
                         ]
                     ]
                 ]
+            ]
+        ]
+    , Styles.id Styles.ConsoleInput
+        [ Css.position Css.fixed
+        , Css.display Css.block
+        , Css.property "transition" "bottom 100ms ease-out"
+        , Css.bottom (Css.em -2)
+        , Css.left (Css.px 0)
+        , Css.width (Css.em 40)
+        , Css.height (Css.em 2)
+        , Css.marginTop Css.auto
+        , Css.outline Css.none
+        , Css.border (Css.px 0)
+        , Css.fontFamily Css.monospace
+        , Css.backgroundColor Colors.consoleInputBackground
+        , Css.color Colors.consoleInputText
+        , Css.fontSize (Css.em 1)
+        , Css.padding2 (Css.em 0.2) (Css.em 0.4)
+        , Styles.withClass Styles.ConsoleInputDisplayed
+            [ Css.bottom (Css.em 0)
             ]
         ]
     ]

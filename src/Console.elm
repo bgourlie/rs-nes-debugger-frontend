@@ -21,7 +21,6 @@ import Colors
 type alias Model a =
     { a
         | messages : List ( String, Int )
-        , consoleInput : String
     }
 
 
@@ -85,94 +84,48 @@ addMessage failHandler successHandler message appInput =
 
 styles : List Css.Snippet
 styles =
-    [ Styles.id Styles.Console
-        [ Css.displayFlex
-        , Css.overflowX Css.hidden
-        , Css.overflowY Css.hidden
-        , Css.flexDirection Css.column
-        , Css.width (Css.pct 100)
+    [ Styles.id Styles.ConsoleLines
+        [ Css.width (Css.pct 100)
         , Css.padding2 (Css.em 0.3) (Css.em 0.5)
         , Css.backgroundColor Colors.consoleBackground
-        , Css.descendants
-            [ Styles.id Styles.ConsoleLines
-                [ Css.displayFlex
-                , Css.flexDirection Css.column
-                , Css.overflowY Css.scroll
-                , Css.marginBottom (Css.em 0.3)
+        , Css.displayFlex
+        , Css.flexDirection Css.column
+        , Css.overflowY Css.scroll
+        , Css.children
+            [ Styles.class Styles.ConsoleLine
+                [ Css.paddingBottom (Css.em 0.1)
                 , Css.children
-                    [ Styles.class Styles.ConsoleLine
-                        [ Css.paddingBottom (Css.em 0.1)
+                    [ Styles.class Styles.MessageRepeats
+                        [ Css.display Css.inlineBlock
+                        , Css.marginLeft (Css.em 0.5)
+                        , Css.padding2 (Css.em 0.075) (Css.em 0.25)
+                        , Css.backgroundColor Colors.messageRepeatBackgroundColor
+                        , Css.borderRadius (Css.pct 50)
+                        , Css.fontSize (Css.pct 80)
+                        , Css.property "visibility" "hidden"
+                        ]
+                    , Styles.class Styles.MessageRepeatsShow
+                        [ Css.property "visibility" "visible"
                         ]
                     ]
-                ]
-            , Styles.id Styles.ConsoleInput
-                [ Css.width (Css.pct 100)
-                , Css.marginTop Css.auto
-                , Css.outline Css.none
-                , Css.border (Css.px 0)
-                , Css.fontFamily Css.monospace
-                , Css.backgroundColor Colors.consoleInputBackground
-                , Css.color Colors.consoleInputText
-                , Css.fontSize (Css.em 1)
-                , Css.padding2 (Css.em 0.2) (Css.em 0.4)
-                ]
-            , Styles.class Styles.MessageRepeats
-                [ Css.display Css.inlineBlock
-                , Css.marginLeft (Css.em 0.5)
-                , Css.padding2 (Css.em 0.075) (Css.em 0.25)
-                , Css.backgroundColor Colors.messageRepeatBackgroundColor
-                , Css.borderRadius (Css.pct 50)
-                , Css.fontSize (Css.pct 80)
-                , Css.property "visibility" "hidden"
-                ]
-            , Styles.class Styles.MessageRepeatsShow
-                [ Css.property "visibility" "visible"
                 ]
             ]
         ]
     ]
 
 
-view : msg -> (String -> msg) -> msg -> Model a -> Html msg
-view nop consoleInputUpdated consoleInputSubmitted { messages, consoleInput } =
-    Html.div [ id Styles.Console ]
-        [ Html.div [ id Styles.ConsoleLines ]
-            (messages
-                |> List.map
-                    (\( msg, repeats ) ->
-                        Html.div [ class [ Styles.ConsoleLine ] ]
-                            [ Html.span [] [ Html.text msg ]
-                            , Html.span [ messageRepeatsClasses repeats ] [ Html.text <| toString repeats ]
-                            ]
-                    )
-                |> List.reverse
-            )
-        , Html.input
-            [ id Styles.ConsoleInput
-            , Html.Attributes.type_ "text"
-            , Html.Attributes.placeholder "Enter debugger commands here..."
-            , Html.Events.onInput consoleInputUpdated
-            , Html.Attributes.value consoleInput
-            , onEnter nop consoleInputSubmitted
-            ]
-            []
-        ]
-
-
-onEnter : msg -> msg -> Html.Attribute msg
-onEnter nop consoleInputSubmitted =
-    Html.Events.onWithOptions "keyup"
-        { stopPropagation = True, preventDefault = False }
-        (Json.map
-            (\keyCode ->
-                case keyCode of
-                    13 ->
-                        consoleInputSubmitted
-
-                    _ ->
-                        nop
-            )
-            Html.Events.keyCode
+view : Model a -> Html msg
+view { messages } =
+    Html.div [ id Styles.ConsoleLines ]
+        (messages
+            |> List.map
+                (\( msg, repeats ) ->
+                    Html.div [ class [ Styles.ConsoleLine ] ]
+                        [ Html.span [] [ Html.text msg ]
+                        , Html.span [ messageRepeatsClasses repeats ] [ Html.text <| toString repeats ]
+                        ]
+                )
+            |> List.reverse
         )
 
 

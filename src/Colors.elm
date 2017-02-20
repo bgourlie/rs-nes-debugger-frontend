@@ -20,7 +20,7 @@ consoleBackground =
 
 consoleInputBackground : Css.Color
 consoleInputBackground =
-    hex "#222222"
+    hex "#111111"
 
 
 consoleInputText : Css.Color
