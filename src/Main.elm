@@ -298,7 +298,7 @@ executeConsoleCommand : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 executeConsoleCommand ( model, cmd ) =
     case model.consoleInput of
         "" ->
-            ( model, cmd )
+            update (SetDisplayConsoleInput False) model
 
         _ ->
             let
