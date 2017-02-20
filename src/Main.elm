@@ -278,12 +278,12 @@ executeConsoleCommand ( model, cmd ) =
             ( model, cmd )
 
         _ ->
-            case ConsoleCommand.parse model.consoleInput of
-                Ok consoleCommand ->
-                    let
-                        updatedModel =
-                            { model | consoleInput = "" }
-                    in
+            let
+                updatedModel =
+                    { model | consoleInput = "" }
+            in
+                case ConsoleCommand.parse model.consoleInput of
+                    Ok consoleCommand ->
                         case consoleCommand of
                             ConsoleCommand.SetOffsetByteView byteFormat ->
                                 ( { updatedModel | offsetByteFormat = byteFormat }, cmd )
@@ -310,9 +310,9 @@ executeConsoleCommand ( model, cmd ) =
                             ConsoleCommand.JumpToMemory offset ->
                                 updateMemoryViewOffset offset ( updatedModel, cmd )
 
-                Err _ ->
-                    ( model, cmd )
-                        |> consoleMessage "Unknown console command"
+                    Err _ ->
+                        ( updatedModel, cmd )
+                            |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
 
 
 updateInstructionPivot : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
