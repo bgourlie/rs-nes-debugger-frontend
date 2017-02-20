@@ -1,7 +1,8 @@
-module Registers exposing (new, decoder, Registers, view)
+module Registers exposing (new, decoder, styles, view, Registers)
 
 import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
 import Html.Attributes exposing (title, colspan)
+import Css
 import Bitwise exposing (and)
 import Json.Decode as Json exposing (Decoder, field)
 import ParseInt exposing (toHex)
@@ -105,7 +106,7 @@ view model =
         cycles =
             model.cycles
     in
-        table []
+        table [ id Styles.Registers ]
             [ tr []
                 [ th [ title "Program Counter" ] [ text "PC" ]
                 , th [ title "Stack Pointer" ] [ text "SP" ]
@@ -173,3 +174,11 @@ view16 display byte =
                     "0x" ++ String.padLeft 4 '0' (toHex byte)
     in
         Html.span [] [ text str ]
+
+
+styles : List Css.Snippet
+styles =
+    [ Styles.id Styles.Registers
+        [ Css.property "border-spacing" "10px 0"
+        ]
+    ]

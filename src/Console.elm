@@ -161,7 +161,8 @@ view nop consoleInputUpdated consoleInputSubmitted { messages, consoleInput } =
 
 onEnter : msg -> msg -> Html.Attribute msg
 onEnter nop consoleInputSubmitted =
-    Html.Events.on "keyup"
+    Html.Events.onWithOptions "keyup"
+        { stopPropagation = True, preventDefault = False }
         (Json.map
             (\keyCode ->
                 case keyCode of

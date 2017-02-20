@@ -10,6 +10,7 @@ import Http
 import WebSocket
 import Css
 import Css.Elements
+import Keyboard
 import ParseInt exposing (toHex)
 import ConsoleCommand
 import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
@@ -126,6 +127,7 @@ type Msg
     | InstructionRequestFail Http.Error
     | UpdateConsoleInput String
     | SubmitConsoleCommand
+    | KeyPressed Int
     | UnknownState ( DebuggerState.DebuggerState, DebuggerState.Input )
     | NoOp
 
@@ -226,12 +228,47 @@ update msg model =
             ( model, Cmd.none )
                 |> executeConsoleCommand
 
+        KeyPressed keyCode ->
+            ( model, Cmd.none )
+                |> handleKeyPress keyCode
+
         UnknownState ( state, input ) ->
             ( model, Cmd.none )
                 |> consoleMessage ("Uh oh, the following state transition wasn't handled: " ++ (toString input) ++ " -> " ++ (toString state))
 
         NoOp ->
             ( model, Cmd.none )
+
+
+handleKeyPress : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+handleKeyPress keyCode ( model, cmd ) =
+    case keyCode of
+        83 ->
+            -- "s" for step
+            let
+                ( newModel, newCmd ) =
+                    update StepClick model
+            in
+                ( newModel, Cmd.batch [ cmd, newCmd ] )
+
+        70 ->
+            -- "f" for find current instruction
+            let
+                ( newModel, newCmd ) =
+                    update ScrollInstructionIntoView model
+            in
+                ( newModel, Cmd.batch [ cmd, newCmd ] )
+
+        67 ->
+            -- "c" for continue
+            let
+                ( newModel, newCmd ) =
+                    update ContinueClick model
+            in
+                ( newModel, Cmd.batch [ cmd, newCmd ] )
+
+        _ ->
+            ( model, cmd )
 
 
 executeConsoleCommand : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -430,7 +467,8 @@ handleBreakCondition breakReason snapshot appInput =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ WebSocket.onOpen DebuggerConnectionOpened
+        [ Keyboard.ups (\keyCode -> KeyPressed keyCode)
+        , WebSocket.onOpen DebuggerConnectionOpened
         , WebSocket.onClose DebuggerConnectionClosed
         , WebSocket.listen wsDebuggerEndpoint <|
             DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
@@ -444,20 +482,18 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div [ id Styles.Container ]
-        [ header []
-            [ div [ id Styles.HeaderControls ]
-                [ Registers.view model
-                , div [ id Styles.DebuggerButtons ]
-                    [ button [ class [ Styles.Button ], onClick ContinueClick, title "Continue" ] [ Icons.continue ]
-                    , button [ class [ Styles.Button ], onClick StepClick, title "Step" ] [ Icons.step ]
-                    , button [ class [ Styles.Button ], onClick ScrollInstructionIntoView, title "Find Current Instruction" ] [ Icons.magnifyingGlass ]
-                    ]
+        [ div
+            [ id Styles.StatusStrip
+            , classList
+                [ ( Styles.DebuggerConnected, model.debuggerState /= DebuggerState.NotConnected )
+                , ( Styles.DebuggerNotConnected, model.debuggerState == DebuggerState.NotConnected )
                 ]
-            , div [ id Styles.StatusStrip, stripStyles model ] []
             ]
+            []
         , div [ id Styles.TwoColumn ]
             [ div [ id Styles.LeftColumn ]
-                [ div [ id Styles.InstructionsContainer ]
+                [ Registers.view model
+                , div [ id Styles.InstructionsContainer ]
                     [ Instruction.view (\address -> ToggleBreakpoint address) model
                     ]
                 ]
@@ -473,14 +509,6 @@ view model =
         ]
 
 
-stripStyles : Model -> Attribute msg
-stripStyles model =
-    classList
-        [ ( Styles.DebuggerConnected, model.debuggerState /= DebuggerState.NotConnected )
-        , ( Styles.DebuggerNotConnected, model.debuggerState == DebuggerState.NotConnected )
-        ]
-
-
 styles : List Css.Snippet
 styles =
     [ Styles.id Styles.Container
@@ -488,71 +516,60 @@ styles =
         , Css.flexDirection Css.column
         , Css.height (Css.vh 100)
         , Css.children
-            [ Css.Elements.header
-                [ Css.property "flex" "0 1 auto"
-                , Css.backgroundColor Colors.headerColor
-                , Css.boxShadow5 (Css.px 0) (Css.px 2) (Css.px 2) (Css.px -2) (Css.rgba 0 0 0 0.4)
+            [ Styles.id Styles.StatusStrip
+                [ Css.width (Css.pct 100)
+                , Css.height (Css.px 3)
+                , Styles.withClass Styles.DebuggerConnected
+                    [ Css.backgroundColor Colors.statusStripConnectedColor
+                    ]
+                , Styles.withClass Styles.DebuggerNotConnected
+                    [ Css.backgroundColor Colors.statusStripDisconnectedColor
+                    ]
+                ]
+            , Styles.id Styles.TwoColumn
+                [ Css.displayFlex
+                , Css.flexDirection Css.row
+                , Css.flexGrow (Css.num 1)
+                , Css.property "height" "calc(100% - 3px)"
                 , Css.children
-                    [ Styles.id Styles.HeaderControls
-                        [ Css.children
-                            [ Css.everything
-                                [ Css.display Css.inlineBlock
-                                , Css.marginLeft (Css.px 10)
-                                , Css.firstChild
-                                    [ Css.marginLeft (Css.px 0)
-                                    ]
+                    [ Styles.id Styles.LeftColumn
+                        [ Css.displayFlex
+                        , Css.flexDirection Css.column
+                        , Css.flexGrow (Css.num 1)
+                        , Css.flexBasis (Css.px 0)
+                        , Css.overflowY Css.auto
+                        , Css.children
+                            [ Styles.id Styles.Registers
+                                [ Css.flexGrow (Css.num 1)
+                                , Css.flexBasis (Css.px 0)
+                                ]
+                            , Styles.id Styles.InstructionsContainer
+                                [ Css.borderTop3 (Css.px 1) Css.solid Colors.headerBorder
+                                , Css.overflowY Css.scroll
+                                , Css.flexGrow (Css.num 1)
+                                , Css.property "height" "calc(100% - 40px)"
                                 ]
                             ]
                         ]
-                    , Styles.id Styles.StatusStrip
-                        [ Css.width (Css.pct 100)
-                        , Css.height (Css.px 2)
+                    , Styles.id Styles.RightColumn
+                        [ Css.displayFlex
+                        , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
+                        , Css.flexDirection Css.column
+                        , Css.overflow Css.auto
+                        , Css.children
+                            [ Styles.id Styles.ConsoleContainer
+                                [ Css.backgroundColor Colors.consoleBackground
+                                , Css.displayFlex
+                                , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
+                                ]
+                            , Styles.id Styles.HexEditorContainer
+                                [ Css.displayFlex
+                                , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
+                                , Css.overflowY Css.auto
+                                , Css.position Css.relative
+                                ]
+                            ]
                         ]
-                    , Styles.class Styles.DebuggerConnected
-                        [ Css.backgroundColor Colors.statusStripConnectedColor
-                        ]
-                    , Styles.class Styles.DebuggerNotConnected
-                        [ Css.backgroundColor Colors.statusStripDisconnectedColor
-                        ]
-                    ]
-                ]
-            ]
-        ]
-    , Styles.id Styles.TwoColumn
-        [ Css.displayFlex
-        , Css.flexDirection Css.row
-        , Css.property "flex" "1 1 auto"
-        , Css.minHeight (Css.px 0)
-        , Css.minWidth (Css.px 0)
-        ]
-    , Styles.id Styles.LeftColumn
-        [ Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
-        , Css.overflowY Css.auto
-        ]
-    , Styles.id Styles.RightColumn
-        [ Css.displayFlex
-        , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
-        , Css.flexDirection Css.column
-        , Css.overflow Css.auto
-        ]
-    , Styles.id Styles.ConsoleContainer
-        [ Css.backgroundColor Colors.consoleBackground
-        , Css.displayFlex
-        , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
-        ]
-    , Styles.id Styles.HexEditorContainer
-        [ Css.displayFlex
-        , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
-        , Css.overflowY Css.auto
-        , Css.position Css.relative
-        ]
-    , Styles.id Styles.DebuggerButtons
-        [ Css.verticalAlign Css.top
-        , Css.children
-            [ Css.everything
-                [ Css.marginLeft (Css.px 5)
-                , Css.first
-                    [ Css.marginLeft (Css.px 0)
                     ]
                 ]
             ]

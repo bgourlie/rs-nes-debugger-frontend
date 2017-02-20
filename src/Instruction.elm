@@ -7,6 +7,7 @@ import List
 import Dict exposing (Dict)
 import Json.Decode as Json exposing (Decoder, field)
 import Css
+import Css.Elements
 import ParseInt exposing (toHex)
 import Styles
 import Registers
@@ -116,7 +117,7 @@ view breakpointClickHandler model =
         instructionsToDrop =
             max 0 (pivotIndex - halfWindowSize)
     in
-        Html.table [ class [ Styles.Instructions ] ]
+        Html.table [ id Styles.Instructions ]
             (model.instructions
                 |> List.drop instructionsToDrop
                 |> List.take model.instructionsDisplayed
@@ -126,10 +127,21 @@ view breakpointClickHandler model =
                             offset =
                                 getOffset instruction
                         in
-                            Html.tr ([ classList [ ( Styles.CurrentInstruction, offset == model.registers.pc ) ] ])
-                                [ Html.td [ class [ Styles.Gutter ] ]
+                            Html.tr
+                                [ classList
+                                    [ ( Styles.Instruction, True )
+                                    , ( Styles.CurrentInstruction, offset == model.registers.pc )
+                                    ]
+                                ]
+                                [ Html.td [ class [ Styles.InstructionGutter ] ]
                                     [ Html.div [ class [ Styles.MemoryLocation ] ] [ memoryView model.offsetByteFormat offset ]
-                                    , Html.div [ breakpointClasses model.breakpoints offset, onClick <| breakpointClickHandler offset ]
+                                    , Html.div
+                                        [ classList
+                                            [ ( Styles.BreakpointHitBox, True )
+                                            , ( Styles.BreakpointOn, Breakpoints.isSet model.breakpoints offset )
+                                            ]
+                                        , onClick (breakpointClickHandler offset)
+                                        ]
                                         [ Icons.breakpoint
                                         ]
                                     ]
@@ -160,15 +172,15 @@ instructionCell model instr =
                     else
                         Nothing
             in
-                Html.td []
+                Html.td [ class [ Styles.InstructionValue ] ]
                     [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
                     , Html.text " "
-                    , Html.span [ class [ Styles.Operand ] ] [ AddressingMode.view model.operandByteFormat addressingMode ]
+                    , Html.span [ class [ Styles.Operand ] ] (AddressingMode.view model.operandByteFormat addressingMode)
                     , addressingModeMemoryView model.memoryByteFormat amMemory
                     ]
 
         Undefined offset ->
-            Html.td [] [ Html.span [ class [ Styles.UndefinedOpcode ] ] [ Html.text "--" ] ]
+            Html.td [ class [ Styles.InstructionValue ] ] [ Html.span [ class [ Styles.UndefinedOpcode ] ] [ Html.text "---" ] ]
 
 
 addressingModeMemoryView : Byte.Format -> Maybe ( Int, Int ) -> Html msg
@@ -206,7 +218,7 @@ memoryView display byte =
                     -- Default to hex display
                     "0x" ++ String.padLeft 4 '0' (toHex byte)
     in
-        Html.span [] [ Html.text str ]
+        Html.text str
 
 
 valueView : Byte.Format -> Int -> Html msg
@@ -226,61 +238,72 @@ valueView display byte =
 
 styles : List Css.Snippet
 styles =
-    [ Styles.class Styles.Instructions
-        [ Css.fontFamilies [ "monospace" ]
-        , Css.fontSize (Css.em 1.0)
+    [ Styles.id Styles.Instructions
+        [ Css.width (Css.pct 100)
         , Css.property "border-spacing" "0"
         , Css.children
-            [ Styles.class Styles.CurrentInstruction
-                [ Css.backgroundColor Colors.currentLine
+            [ Styles.class Styles.Instruction
+                [ Css.displayFlex
+                , Css.alignItems Css.stretch
+                , Styles.withClass Styles.CurrentInstruction
+                    [ Css.backgroundColor Colors.currentLine
+                    ]
+                , Css.children
+                    [ Styles.class Styles.InstructionGutter
+                        [ Css.color Colors.lineNumber
+                        , Css.backgroundColor Colors.gutterBackground
+                        , Css.borderRight3 (Css.px 1) Css.solid Colors.gutterBorder
+                        , Css.paddingRight (Css.em 0.5)
+                        , Css.whiteSpace Css.noWrap
+                        , Css.property "user-select" "none"
+                        , Css.children
+                            [ Styles.class Styles.MemoryLocation
+                                [ Css.display Css.inlineBlock
+                                ]
+                            , Styles.class Styles.BreakpointHitBox
+                                [ Css.display Css.inlineBlock
+                                , Css.property "transition" "opacity .15s"
+                                , Css.paddingLeft (Css.em 0.6)
+                                , Css.opacity (Css.num 0)
+                                , Css.cursor Css.pointer
+                                , Css.hover
+                                    [ Css.opacity (Css.num 0.2)
+                                    ]
+                                , Styles.withClass Styles.BreakpointOn
+                                    [ Css.opacity (Css.num 1.0)
+                                    , Css.hover
+                                        [ Css.opacity (Css.num 1.0)
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    , Styles.class Styles.InstructionValue
+                        [ Css.children
+                            [ Styles.class Styles.Mnemonic
+                                [ Css.color Colors.mnemonic
+                                , Css.paddingLeft (Css.em 0.5)
+                                ]
+                            , Styles.class Styles.UndefinedOpcode
+                                [ Css.color Colors.undefinedOpcode
+                                , Css.paddingLeft (Css.em 0.5)
+                                ]
+                            , Styles.class Styles.AddressModeValues
+                                [ Css.color Colors.addressModeLiveValue
+                                , Css.paddingLeft (Css.em 1)
+                                , Css.children
+                                    [ Styles.class Styles.AddressModeMemoryValue
+                                        [ Css.paddingLeft (Css.em 1)
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        , Css.lastChild
+                            [ Css.flexGrow (Css.num 1)
+                            ]
+                        ]
+                    ]
                 ]
             ]
         ]
-    , Styles.class Styles.Gutter
-        [ Css.color Colors.lineNumber
-        , Css.backgroundColor Colors.gutterBackground
-        , Css.borderRight3 (Css.px 1) Css.solid Colors.gutterBorder
-        , Css.paddingRight (Css.em 0.5)
-        , Css.whiteSpace Css.noWrap
-        , Css.property "user-select" "none"
-        ]
-    , Styles.class Styles.MemoryLocation
-        [ Css.display Css.inlineBlock
-        ]
-    , Styles.class Styles.AddressModeValues
-        [ Css.color Colors.addressModeLiveValue
-        , Css.paddingLeft (Css.em 1)
-        ]
-    , Styles.class Styles.AddressModeMemoryValue
-        [ Css.paddingLeft (Css.em 1)
-        ]
-    , Styles.class Styles.BreakpointHitBox
-        [ Css.display Css.inlineBlock
-        , Css.property "transition" "opacity .15s"
-        , Css.paddingLeft (Css.em 0.6)
-        , Css.opacity (Css.num 0)
-        , Css.cursor Css.pointer
-        , Css.hover
-            [ Css.opacity (Css.num 0.2)
-            ]
-        ]
-    , Styles.class Styles.BreakpointOn
-        [ Css.opacity (Css.num 1.0)
-        , Css.hover
-            [ Css.opacity (Css.num 1.0)
-            ]
-        ]
-    , Styles.class Styles.Mnemonic
-        [ Css.color Colors.mnemonic
-        , Css.paddingLeft (Css.em 0.5)
-        ]
-    , Styles.class Styles.UndefinedOpcode
-        [ Css.color Colors.undefinedOpcode
-        , Css.paddingLeft (Css.em 0.5)
-        ]
     ]
-
-
-breakpointClasses : Breakpoints.Breakpoints -> Int -> Attribute msg
-breakpointClasses breakpoints offset =
-    classList [ ( Styles.BreakpointHitBox, True ), ( Styles.BreakpointOn, Breakpoints.isSet breakpoints offset ) ]

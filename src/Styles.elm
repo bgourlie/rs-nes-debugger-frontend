@@ -1,4 +1,4 @@
-module Styles exposing (helpers, class, id, Class(..), Id(..))
+module Styles exposing (helpers, class, id, withClass, Class(..), Id(..))
 
 import Html.CssHelpers
 import Css exposing ((.), (#))
@@ -19,16 +19,21 @@ id idType mixins =
     (#) idType mixins
 
 
+withClass : Class -> List Css.Mixin -> Css.Mixin
+withClass class mixins =
+    Css.withClass class mixins
+
+
 type Class
-    = Button
-    | MessageRepeats
+    = MessageRepeats
     | MessageRepeatsShow
     | RowOffset
     | OffsetColumn
     | BytesRow
     | ButtonIcon
     | BreakpointIcon
-    | Gutter
+    | InstructionGutter
+    | InstructionValue
     | BreakpointHitBox
     | BreakpointOn
     | MemoryLocation
@@ -38,8 +43,8 @@ type Class
     | Mnemonic
     | Operand
     | UndefinedOpcode
-    | Instructions
     | CurrentInstruction
+    | Instruction
     | ConsoleLine
     | DebuggerConnected
     | DebuggerNotConnected
@@ -48,18 +53,17 @@ type Class
 type Id
     = Container
     | TwoColumn
-    | DebuggerButtons
     | LeftColumn
     | ConsoleContainer
     | HexEditorContainer
     | RightColumn
-    | ByteFormatToggle
     | Console
     | ConsoleLines
     | ConsoleInput
     | HexEditor
     | HexEditorBody
     | InstructionsContainer
-    | Cycles
+    | Instructions
     | StatusStrip
-    | HeaderControls
+    | DebuggerStatus
+    | Registers

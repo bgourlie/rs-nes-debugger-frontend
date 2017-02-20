@@ -12,24 +12,7 @@ import Icons
 import HexEditor
 import Icons
 import Colors
-
-
-commonStyles =
-    [ (.) Styles.Button
-        [ Css.position Css.relative
-        , Css.padding Css.zero
-        , Css.border3 (Css.px 1) Css.solid Css.transparent
-        , Css.borderRadius (Css.px 5)
-        , Css.padding (Css.em 0.1)
-        , Css.backgroundColor Css.transparent
-        , Css.outline Css.none
-        , Css.hover
-            [ Css.borderColor (Css.hex Colors.buttonBorderColor)
-            ]
-        , Css.property "transition" "all .2s ease"
-        , Css.cursor Css.pointer
-        ]
-    ]
+import Registers
 
 
 css : Stylesheet
@@ -56,10 +39,10 @@ css =
                     , fontFamily monospace
                     ]
               ]
-            , commonStyles
             , Main.styles
             , Instruction.styles
             , Console.styles
             , HexEditor.styles
             , Icons.styles
+            , Registers.styles
             ]

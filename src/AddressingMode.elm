@@ -54,16 +54,16 @@ getMemory memory registers am =
             Just ( addr, getByte addr memory )
 
         AbsoluteX addr ->
-            Just ( addr, getByte (addr + registers.x) memory )
+            Just ( addr + registers.x, getByte (addr + registers.x) memory )
 
         AbsoluteY addr ->
-            Just ( addr, getByte (addr + registers.y) memory )
+            Just ( addr + registers.y, getByte (addr + registers.y) memory )
 
         ZeroPageX addr ->
-            Just ( addr, getByte (addr + registers.x) memory )
+            Just ( addr + registers.x, getByte (addr + registers.x) memory )
 
         ZeroPageY addr ->
-            Just ( addr, getByte (addr + registers.y) memory )
+            Just ( addr + registers.y, getByte (addr + registers.y) memory )
 
         Indirect addr ->
             let
@@ -79,7 +79,7 @@ getMemory memory registers am =
             Nothing
 
 
-view : Byte.Format -> AddressingMode -> Html msg
+view : Byte.Format -> AddressingMode -> List (Html msg)
 view display am =
     case am of
         IndexedIndirect addr ->
@@ -116,98 +116,87 @@ view display am =
             relativeView display addr
 
         Implied ->
-            span [] []
+            []
 
         Accumulator ->
-            span [] [ text "A" ]
+            [ text "A" ]
 
 
-indexedIndirectView : Byte.Format -> Int -> Html msg
+indexedIndirectView : Byte.Format -> Int -> List (Html msg)
 indexedIndirectView display addr =
-    span []
-        [ span [] [ text "(" ]
-        , asmByteView Byte.Hex addr
-        , span [] [ text ",X)" ]
-        ]
+    [ text "("
+    , asmByteView Byte.Hex addr
+    , text ",X)"
+    ]
 
 
-indirectIndexedView : Byte.Format -> Int -> Html msg
+indirectIndexedView : Byte.Format -> Int -> List (Html msg)
 indirectIndexedView display addr =
-    span []
-        [ span [] [ text "(" ]
-        , asmByteView display addr
-        , span [] [ text "),Y" ]
-        ]
+    [ text "("
+    , asmByteView display addr
+    , text "),Y"
+    ]
 
 
-indirectView : Byte.Format -> Int -> Html msg
+indirectView : Byte.Format -> Int -> List (Html msg)
 indirectView display addr =
-    span []
-        [ span [] [ text "(" ]
-        , asmByteView display addr
-        , span [] [ text ")" ]
-        ]
+    [ text "("
+    , asmByteView display addr
+    , text ")"
+    ]
 
 
-zeroPageView : Byte.Format -> Int -> Html msg
+zeroPageView : Byte.Format -> Int -> List (Html msg)
 zeroPageView display addr =
-    span []
-        [ asmByteView display addr
-        ]
+    [ asmByteView display addr
+    ]
 
 
-immediateView : Byte.Format -> Int -> Html msg
+immediateView : Byte.Format -> Int -> List (Html msg)
 immediateView display addr =
-    span []
-        [ span [] [ text "#" ]
-        , asmByteView display addr
-        ]
+    [ span [] [ text "#" ]
+    , asmByteView display addr
+    ]
 
 
-absoluteView : Byte.Format -> Int -> Html msg
+absoluteView : Byte.Format -> Int -> List (Html msg)
 absoluteView display addr =
-    span []
-        [ asmByteView display addr
-        ]
+    [ asmByteView display addr
+    ]
 
 
-zeroPageXView : Byte.Format -> Int -> Html msg
+zeroPageXView : Byte.Format -> Int -> List (Html msg)
 zeroPageXView display addr =
-    span []
-        [ asmByteView display addr
-        , span [] [ text ",X" ]
-        ]
+    [ asmByteView display addr
+    , text ",X"
+    ]
 
 
-zeroPageYView : Byte.Format -> Int -> Html msg
+zeroPageYView : Byte.Format -> Int -> List (Html msg)
 zeroPageYView display addr =
-    span []
-        [ asmByteView display addr
-        , span [] [ text ",Y" ]
-        ]
+    [ asmByteView display addr
+    , text ",Y"
+    ]
 
 
-absoluteXView : Byte.Format -> Int -> Html msg
+absoluteXView : Byte.Format -> Int -> List (Html msg)
 absoluteXView display addr =
-    span []
-        [ asmByteView display addr
-        , span [] [ text ",X" ]
-        ]
+    [ asmByteView display addr
+    , text ",X"
+    ]
 
 
-absoluteYView : Byte.Format -> Int -> Html msg
+absoluteYView : Byte.Format -> Int -> List (Html msg)
 absoluteYView display addr =
-    span []
-        [ asmByteView display addr
-        , span [] [ text ",Y" ]
-        ]
+    [ asmByteView display addr
+    , text ",Y"
+    ]
 
 
-relativeView : Byte.Format -> Int -> Html msg
+relativeView : Byte.Format -> Int -> List (Html msg)
 relativeView display addr =
-    span []
-        [ asmByteView display addr
-        ]
+    [ asmByteView display addr
+    ]
 
 
 
@@ -232,7 +221,7 @@ asmByteView display byte =
                 Byte.Ascii ->
                     "'" ++ (Byte.asciiValue byte) ++ "'"
     in
-        span [] [ text str ]
+        text str
 
 
 decoder : Decoder AddressingMode
