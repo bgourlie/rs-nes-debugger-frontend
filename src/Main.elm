@@ -204,8 +204,7 @@ update msg model =
                 |> consoleMessage ("Continue request fail: " ++ toString err)
 
         ScrollInstructionIntoView ->
-            ( model, Cmd.none )
-                |> updateInstructionPivot model.registers.pc
+            ( { model | instructionPivot = model.registers.pc }, Cmd.none )
                 |> scrollElementIntoView (toString Styles.CurrentInstruction)
 
         ScrollConsoleSucceed ->
@@ -333,16 +332,6 @@ executeConsoleCommand ( model, cmd ) =
                     Err _ ->
                         ( updatedModel, cmd )
                             |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
-
-
-updateInstructionPivot : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-updateInstructionPivot pivotOffset ( model, cmd ) =
-    case Dict.get pivotOffset model.instructionOffsetMap of
-        Just instructionOffset ->
-            ( { model | instructionPivot = instructionOffset }, cmd )
-
-        Nothing ->
-            consoleMessage ("No instruction at offset 0x" ++ (toHex pivotOffset)) ( model, cmd )
 
 
 updateMemoryViewOffset : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
