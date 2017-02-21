@@ -6,7 +6,6 @@ import Byte
 
 type ConsoleCommand
     = ToggleBreakpoint Int
-    | JumpToInstruction Int
     | JumpToMemory Int
     | SetMemoryByteView Byte.Format
     | SetOffsetByteView Byte.Format
@@ -19,7 +18,6 @@ parse input =
     run
         (oneOf
             [ parseBreakpointCommand
-            , parseJumpToInstructionCommand
             , parseJumpToMemoryCommand
             , parseSetMemoryByteView
             , parseSetOffsetByteView
@@ -35,14 +33,6 @@ parseBreakpointCommand : Parser ConsoleCommand
 parseBreakpointCommand =
     succeed ToggleBreakpoint
         |. keyword "bp"
-        |. spaces
-        |= int
-
-
-parseJumpToInstructionCommand : Parser ConsoleCommand
-parseJumpToInstructionCommand =
-    succeed JumpToInstruction
-        |. keyword "jmpi"
         |. spaces
         |= int
 

@@ -327,9 +327,6 @@ executeConsoleCommand ( model, cmd ) =
                             ConsoleCommand.ToggleBreakpoint offset ->
                                 update (ToggleBreakpoint offset) updatedModel
 
-                            ConsoleCommand.JumpToInstruction offset ->
-                                updateInstructionPivot offset ( updatedModel, cmd )
-
                             ConsoleCommand.JumpToMemory offset ->
                                 updateMemoryViewOffset offset ( updatedModel, cmd )
 
@@ -340,19 +337,12 @@ executeConsoleCommand ( model, cmd ) =
 
 updateInstructionPivot : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 updateInstructionPivot pivotOffset ( model, cmd ) =
-    let
-        nearestInstructionOffset =
-            Dict.keys model.instructionOffsetMap
-                |> List.filter (\o -> (abs (o - pivotOffset)) < 4)
-                |> List.head
-    in
-        case nearestInstructionOffset of
-            Just instructionOffset ->
-                ( { model | instructionPivot = instructionOffset }, cmd )
-                    |> consoleMessage ("Displaying instruction at 0x" ++ (toHex instructionOffset))
+    case Dict.get pivotOffset model.instructionOffsetMap of
+        Just instructionOffset ->
+            ( { model | instructionPivot = instructionOffset }, cmd )
 
-            Nothing ->
-                consoleMessage ("No instruction near offset 0x" ++ (toHex pivotOffset)) ( model, cmd )
+        Nothing ->
+            consoleMessage ("No instruction at offset 0x" ++ (toHex pivotOffset)) ( model, cmd )
 
 
 updateMemoryViewOffset : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
