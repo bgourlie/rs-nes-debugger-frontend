@@ -1,7 +1,7 @@
 module Styles exposing (helpers, class, id, withClass, Class(..), Id(..))
 
 import Html.CssHelpers
-import Css exposing ((.), (#))
+import Css exposing (class, id)
 
 
 helpers : Html.CssHelpers.Namespace String Class Id msg
@@ -11,12 +11,12 @@ helpers =
 
 class : Class -> List Css.Mixin -> Css.Snippet
 class classType mixins =
-    (.) classType mixins
+    Css.class classType mixins
 
 
 id : Id -> List Css.Mixin -> Css.Snippet
 id idType mixins =
-    (#) idType mixins
+    Css.id idType mixins
 
 
 withClass : Class -> List Css.Mixin -> Css.Mixin
