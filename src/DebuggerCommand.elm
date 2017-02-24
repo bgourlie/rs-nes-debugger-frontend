@@ -15,6 +15,7 @@ type BreakReason
     = Step
     | Breakpoint
     | Trap
+    | Nmi
 
 
 type CrashReason
@@ -89,6 +90,9 @@ breakReasonDecoder =
 
                     "trap" ->
                         Json.succeed Trap
+
+                    "nmi" ->
+                        Json.succeed Nmi
 
                     _ ->
                         Json.fail <| "Unexpected break reason: " ++ reason

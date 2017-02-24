@@ -1,16 +1,21 @@
-module ConsoleCommand exposing (parse, ConsoleCommand(..))
+module ConsoleCommand exposing (parse, ConsoleCommand(..), BreakpointType(..))
 
 import Parser exposing (..)
 import Byte
 
 
 type ConsoleCommand
-    = ToggleBreakpoint Int
+    = ToggleBreakpoint BreakpointType
     | JumpToMemory Int
     | SetMemoryByteView Byte.Format
     | SetOffsetByteView Byte.Format
     | SetOperandByteView Byte.Format
     | SetRegistersByteView Byte.Format
+
+
+type BreakpointType
+    = Offset Int
+    | Nmi
 
 
 parse : String -> Result String ConsoleCommand
@@ -34,7 +39,11 @@ parseBreakpointCommand =
     succeed ToggleBreakpoint
         |. keyword "bp"
         |. spaces
-        |= int
+        |= (oneOf
+                [ int |> andThen (\offset -> succeed (Offset offset))
+                , (keyword "nmi") |> andThen (\_ -> succeed Nmi)
+                ]
+           )
 
 
 parseJumpToMemoryCommand : Parser ConsoleCommand

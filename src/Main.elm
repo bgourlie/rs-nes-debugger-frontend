@@ -18,7 +18,6 @@ import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), 
 import Instruction
 import CpuSnapshot exposing (CpuSnapshot)
 import Ports
-import ToggleBreakpoint
 import Continue
 import Registers
 import Step
@@ -115,8 +114,11 @@ type Msg
     | DebuggerCommandReceiveSuccess DebuggerCommand
     | DebuggerCommandReceiveFail String
     | ToggleBreakpoint Int
-    | ToggleBreakpointRequestSuccess ToggleBreakpoint.Message
-    | ToggleBreakpointRequestFail Http.Error
+    | ToggleBreakpointSuccess Breakpoints.ToggleBreakpointResponse
+    | ToggleBreakpointFail Http.Error
+    | ToggleBreakOnNmi
+    | ToggleBreakOnNmiSuccess Breakpoints.ToggleBreakOnNmiResponse
+    | ToggleBreakOnNmiFail Http.Error
     | StepClick
     | StepRequestSuccess Step.Model
     | StepRequestFail Http.Error
@@ -160,9 +162,9 @@ update msg model =
                 |> consoleMessage ("Unable to receive debugger command: " ++ msg)
 
         ToggleBreakpoint address ->
-            ( model, ToggleBreakpoint.request address ToggleBreakpointRequestFail ToggleBreakpointRequestSuccess )
+            ( model, Breakpoints.toggleBreakpointRequest address ToggleBreakpointFail ToggleBreakpointSuccess )
 
-        ToggleBreakpointRequestSuccess resp ->
+        ToggleBreakpointSuccess resp ->
             let
                 message =
                     if resp.isSet then
@@ -170,11 +172,28 @@ update msg model =
                     else
                         "Breakpoint unset @ 0x" ++ (toHex resp.offset)
             in
-                ( { model | breakpoints = (Breakpoints.toggle model resp.isSet resp.offset) }, Cmd.none )
+                ( { model | breakpoints = (Breakpoints.toggleBreakpoint model resp.isSet resp.offset) }, Cmd.none )
                     |> consoleMessage message
 
-        ToggleBreakpointRequestFail err ->
+        ToggleBreakpointFail err ->
             consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
+
+        ToggleBreakOnNmi ->
+            ( model, Breakpoints.toggleBreakOnNmiRequest ToggleBreakOnNmiFail ToggleBreakOnNmiSuccess )
+
+        ToggleBreakOnNmiSuccess resp ->
+            let
+                message =
+                    if resp.isSet then
+                        "Break-on-NMI set"
+                    else
+                        "Break-on-NMI unset"
+            in
+                ( model, Cmd.none )
+                    |> consoleMessage message
+
+        ToggleBreakOnNmiFail err ->
+            consoleMessage ("Break-on-NMI toggle fail: " ++ toString err) ( model, Cmd.none )
 
         StepClick ->
             ( model, Cmd.none )
@@ -323,8 +342,13 @@ executeConsoleCommand ( model, cmd ) =
                                 ( { updatedModel | registersByteFormat = byteFormat }, cmd )
                                     |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
 
-                            ConsoleCommand.ToggleBreakpoint offset ->
-                                update (ToggleBreakpoint offset) updatedModel
+                            ConsoleCommand.ToggleBreakpoint bpType ->
+                                case bpType of
+                                    ConsoleCommand.Offset offset ->
+                                        update (ToggleBreakpoint offset) updatedModel
+
+                                    ConsoleCommand.Nmi ->
+                                        update ToggleBreakOnNmi updatedModel
 
                             ConsoleCommand.JumpToMemory offset ->
                                 updateMemoryViewOffset offset ( updatedModel, cmd )
@@ -461,6 +485,10 @@ handleBreakCondition breakReason snapshot appInput =
         DebuggerCommand.Trap ->
             appInput
                 |> consoleMessage ("Trap detected @ 0x" ++ toHex snapshot.registers.pc)
+
+        DebuggerCommand.Nmi ->
+            appInput
+                |> consoleMessage "Breaking on NMI"
 
         _ ->
             appInput
