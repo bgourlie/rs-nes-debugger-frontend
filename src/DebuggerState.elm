@@ -103,6 +103,9 @@ updateDebuggerState oldState input =
                 Pause ->
                     Paused
 
+                Continue ->
+                    Running
+
                 _ ->
                     Unknown
 
