@@ -314,47 +314,47 @@ handleKeyPress keyCode ( model, cmd ) =
 
 executeConsoleCommand : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 executeConsoleCommand ( model, cmd ) =
-    case model.consoleInput of
-        "" ->
-            update (SetDisplayConsoleInput False) model
+    let
+        ( newModel, newCmd ) =
+            update (SetDisplayConsoleInput False) { model | consoleInput = "" }
+    in
+        case model.consoleInput of
+            "" ->
+                ( newModel, newCmd )
 
-        _ ->
-            let
-                updatedModel =
-                    { model | consoleInput = "" }
-            in
+            _ ->
                 case ConsoleCommand.parse model.consoleInput of
                     Ok consoleCommand ->
                         case consoleCommand of
                             ConsoleCommand.SetOffsetByteView byteFormat ->
-                                ( { updatedModel | offsetByteFormat = byteFormat }, cmd )
+                                ( { newModel | offsetByteFormat = byteFormat }, newCmd )
                                     |> consoleMessage ("Updated offset byte format to " ++ (toString byteFormat))
 
                             ConsoleCommand.SetMemoryByteView byteFormat ->
-                                ( { updatedModel | memoryByteFormat = byteFormat }, cmd )
+                                ( { newModel | memoryByteFormat = byteFormat }, newCmd )
                                     |> consoleMessage ("Updated memory byte format to " ++ (toString byteFormat))
 
                             ConsoleCommand.SetOperandByteView byteFormat ->
-                                ( { updatedModel | operandByteFormat = byteFormat }, cmd )
+                                ( { newModel | operandByteFormat = byteFormat }, newCmd )
                                     |> consoleMessage ("Updated operand byte format to " ++ (toString byteFormat))
 
                             ConsoleCommand.SetRegistersByteView byteFormat ->
-                                ( { updatedModel | registersByteFormat = byteFormat }, cmd )
+                                ( { newModel | registersByteFormat = byteFormat }, newCmd )
                                     |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
 
                             ConsoleCommand.ToggleBreakpoint bpType ->
                                 case bpType of
                                     ConsoleCommand.Offset offset ->
-                                        update (ToggleBreakpoint offset) updatedModel
+                                        update (ToggleBreakpoint offset) newModel
 
                                     ConsoleCommand.Nmi ->
-                                        update ToggleBreakOnNmi updatedModel
+                                        update ToggleBreakOnNmi newModel
 
                             ConsoleCommand.JumpToMemory offset ->
-                                updateMemoryViewOffset offset ( updatedModel, cmd )
+                                updateMemoryViewOffset offset ( newModel, newCmd )
 
                     Err _ ->
-                        ( updatedModel, cmd )
+                        ( newModel, newCmd )
                             |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
 
 
