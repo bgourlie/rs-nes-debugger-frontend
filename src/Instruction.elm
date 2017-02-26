@@ -7,7 +7,6 @@ import List
 import Dict exposing (Dict)
 import Json.Decode as Json exposing (Decoder, field)
 import Css
-import Css.Elements
 import ParseInt exposing (toHex)
 import Styles
 import Registers

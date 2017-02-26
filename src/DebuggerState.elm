@@ -22,8 +22,9 @@ type alias Memory =
 type alias Screen =
     { width : Int
     , height : Int
-    , buffer : List Int
+    , buffer : String
     }
+
 
 type MemoryMessage
     = NoChange Int
@@ -32,18 +33,11 @@ type MemoryMessage
 
 screenDecoder : Decoder Screen
 screenDecoder =
-    Json.map3 (,,)
+    Json.map3 Screen
         (field "width" Json.int)
         (field "height" Json.int)
-        (field "buffer" (Json.list Json.int))
-        |> Json.andThen
-            (\(width, height, packedBytes) ->
-                let
-                    unpacked =
-                        unpackAll packedBytes
-                in
-                    Json.succeed { width = width, height = height, buffer = unpacked }
-            )
+        (field "buffer" Json.string)
+
 
 decoder : Memory -> Decoder State
 decoder oldMemory =

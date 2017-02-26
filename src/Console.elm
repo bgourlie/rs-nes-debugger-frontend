@@ -5,11 +5,7 @@ import Css
 import Dom
 import Dom.Scroll
 import Html exposing (Html)
-import Html.Attributes
-import Html.Events
-import Json.Decode as Json
 import Css
-import Css.Elements
 import Styles
 import Colors
 

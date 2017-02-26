@@ -10,7 +10,6 @@ import Http
 import WebSocket
 import Json.Decode as Json
 import Css
-import Css.Elements
 import Keyboard
 import ParseInt exposing (toHex)
 import ConsoleCommand
