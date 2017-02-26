@@ -7,7 +7,7 @@ import Json.Decode as Json exposing (field, Decoder)
 import ParseInt exposing (toHex)
 import Byte
 import Registers exposing (Registers)
-import MemorySnapshot exposing (getByte, getWord, MemorySnapshot)
+import DebuggerState exposing (Memory, getByte, getWord)
 
 
 type AddressingMode
@@ -30,7 +30,7 @@ type AddressingMode
 -- TODO: This is something that really needs good tests
 
 
-getMemory : MemorySnapshot -> Registers -> AddressingMode -> Maybe ( Int, Int )
+getMemory : Memory -> Registers -> AddressingMode -> Maybe ( Int, Int )
 getMemory memory registers am =
     case am of
         IndexedIndirect addr ->

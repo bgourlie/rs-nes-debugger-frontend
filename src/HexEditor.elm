@@ -9,7 +9,7 @@ import Css.Elements
 import Styles
 import Colors
 import Byte
-import MemorySnapshot
+import DebuggerState
 
 
 { id, class, classList } =
@@ -18,7 +18,7 @@ import MemorySnapshot
 
 type alias Model a =
     { a
-        | memory : MemorySnapshot.MemorySnapshot
+        | memory : DebuggerState.Memory
         , memoryViewOffset : Int
         , offsetByteFormat : Byte.Format
         , memoryByteFormat : Byte.Format

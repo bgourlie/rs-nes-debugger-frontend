@@ -14,9 +14,9 @@ import Registers
 import Byte
 import Breakpoints
 import AddressingMode
-import MemorySnapshot
 import Icons
 import Colors
+import DebuggerState
 
 
 { id, class, classList } =
@@ -39,7 +39,7 @@ type alias Model a =
         , instructionOffsetMap : OffsetMap
         , instructionPivot : Int
         , registers : Registers.Registers
-        , memory : MemorySnapshot.MemorySnapshot
+        , memory : DebuggerState.Memory
         , breakpoints : Breakpoints.Breakpoints
         , offsetByteFormat : Byte.Format
         , operandByteFormat : Byte.Format

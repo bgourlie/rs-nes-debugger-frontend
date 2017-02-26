@@ -1,156 +1,128 @@
-module DebuggerState exposing (transition, DebuggerState(..), RequestResult(..), Input(..))
+module DebuggerState exposing (memoryDecoder, getByte, getWord, Cpu, Memory)
 
-import Http
-import Step
-import Task
-import Continue
-
-
--- A state machine defining all the debugger states and transitions
+import Debug
+import Json.Decode as Json exposing (Decoder, field)
+import Registers exposing (Registers)
+import List exposing (drop, take, head)
+import Bitwise
 
 
-type alias Model a =
-    { a
-        | debuggerState : DebuggerState
+type alias Cpu =
+    { cycles : Int
+    , registers : Registers.Registers
+    , memory : Memory
     }
 
 
-type DebuggerState
-    = NotConnected
-    | Paused
-    | Stepping
-    | Continuing
-    | Running
-    | Unknown
+type alias Memory =
+    ( Int, List Int )
 
 
-type RequestResult
-    = Success
-    | Fail
+type MemoryMessage
+    = NoChange Int
+    | Updated Memory
 
 
-type Input
-    = Connect
-    | Disconnect
-    | Pause
-    | Step
-    | StepRequestComplete RequestResult
-    | Continue
-    | ContinueRequestComplete RequestResult
+memoryDecoder : Memory -> Decoder Cpu
+memoryDecoder oldMemory =
+    Json.map3 Cpu
+        (field "cycles" Json.int)
+        (field "registers" Registers.decoder)
+        ((field "memory" memoryMessageDecoder)
+            |> Json.andThen
+                (\memorySnapshot ->
+                    case memorySnapshot of
+                        NoChange hash ->
+                            let
+                                ( oldHash, oldMem ) =
+                                    oldMemory
+                            in
+                                if hash == oldHash then
+                                    Json.succeed oldMemory
+                                else
+                                    -- TODO
+                                    Json.succeed <| Debug.log "TODO: Stale memory, request latest" oldMemory
+
+                        Updated newMemory ->
+                            Json.succeed newMemory
+                )
+        )
 
 
-updateDebuggerState : DebuggerState -> Input -> DebuggerState
-updateDebuggerState oldState input =
-    case oldState of
-        NotConnected ->
-            case input of
-                Connect ->
-                    Paused
-
-                Step ->
-                    NotConnected
-
-                _ ->
-                    Unknown
-
-        Paused ->
-            case input of
-                Pause ->
-                    Paused
-
-                Disconnect ->
-                    NotConnected
-
-                Continue ->
-                    Continuing
-
-                Step ->
-                    Stepping
-
-                _ ->
-                    Unknown
-
-        Stepping ->
-            case input of
-                Step ->
-                    Stepping
-
-                StepRequestComplete _ ->
-                    Paused
-
-                _ ->
-                    Unknown
-
-        Continuing ->
-            case input of
-                Continue ->
-                    Continuing
-
-                ContinueRequestComplete Success ->
-                    Running
-
-                ContinueRequestComplete Fail ->
-                    Paused
-
-                _ ->
-                    Unknown
-
-        Running ->
-            case input of
-                Disconnect ->
-                    NotConnected
-
-                Pause ->
-                    Paused
-
-                Continue ->
-                    Running
-
-                _ ->
-                    Unknown
-
-        Unknown ->
-            Unknown
-
-
-transition :
-    (Http.Error -> msg)
-    -> (Step.Model -> msg)
-    -> (Http.Error -> msg)
-    -> (Continue.Model -> msg)
-    -> (( DebuggerState, Input ) -> msg)
-    -> Input
-    -> ( Model a, Cmd msg )
-    -> ( Model a, Cmd msg )
-transition stepFail stepSuccess continueFail continueSuccess unknownStateHandler smInput appInput =
+getByte : Int -> Memory -> Int
+getByte addr snapshot =
     let
-        ( inputModel, inputCmd ) =
-            appInput
+        ( _, memory ) =
+            snapshot
+    in
+        memory
+            |> drop addr
+            |> take 1
+            |> head
+            |> Maybe.withDefault 0
 
-        oldState =
-            inputModel.debuggerState
 
-        newState =
-            updateDebuggerState oldState smInput
+getWord : Int -> Memory -> Int
+getWord addr snapshot =
+    let
+        low_byte =
+            getByte addr snapshot
 
-        newModel =
-            { inputModel | debuggerState = newState }
+        high_byte =
+            getByte (addr + 1) snapshot
+    in
+        Bitwise.or low_byte (Bitwise.shiftLeftBy 8 high_byte)
 
-        newCmd =
-            if newState == oldState then
-                inputCmd
-            else
-                case newState of
-                    Stepping ->
-                        Cmd.batch [ inputCmd, Step.request stepFail stepSuccess ]
 
-                    Continuing ->
-                        Cmd.batch [ inputCmd, Continue.request continueFail continueSuccess ]
+memoryMessageDecoder : Decoder MemoryMessage
+memoryMessageDecoder =
+    (field "state" Json.string)
+        |> Json.andThen
+            (\state ->
+                case state of
+                    "NoChange" ->
+                        (field "hash" Json.int)
+                            |> Json.andThen (\hash -> Json.succeed <| NoChange hash)
 
-                    Unknown ->
-                        Cmd.batch [ inputCmd, Task.perform unknownStateHandler (Task.succeed ( oldState, smInput )) ]
+                    "Updated" ->
+                        Json.map2 (,)
+                            (field "hash" Json.int)
+                            (field "packed_bytes" (Json.list Json.int))
+                            |> Json.andThen
+                                (\( hash, packedBytes ) ->
+                                    let
+                                        unpacked =
+                                            unpackAll packedBytes
+                                    in
+                                        Json.succeed <| Updated ( hash, unpacked )
+                                )
 
                     _ ->
-                        inputCmd
+                        Json.fail <| "unexpected memory state: " ++ state
+            )
+
+
+unpackAll : List Int -> List Int
+unpackAll packedBytes =
+    List.concatMap
+        (\packedByte ->
+            let
+                ( byte1, byte2, byte3, byte4 ) =
+                    unpack32 packedByte
+            in
+                [ byte1, byte2, byte3, byte4 ]
+        )
+        packedBytes
+
+
+unpack32 : Int -> ( Int, Int, Int, Int )
+unpack32 val =
+    let
+        mask =
+            255
     in
-        ( newModel, newCmd )
+        ( Bitwise.and val mask
+        , Bitwise.and (Bitwise.shiftRightBy 8 val) mask
+        , Bitwise.and (Bitwise.shiftRightBy 16 val) mask
+        , Bitwise.and (Bitwise.shiftRightBy 24 val) mask
+        )

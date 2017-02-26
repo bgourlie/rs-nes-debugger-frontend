@@ -1,14 +1,13 @@
 module DebuggerCommand exposing (crashReasonToString, decode, DebuggerCommand, DebuggerCommand(..), BreakReason(..), CrashReason(..))
 
 import Json.Decode as Json exposing (Decoder, field)
-import MemorySnapshot
-import CpuSnapshot
+import DebuggerState
 import ParseInt exposing (toHex)
 
 
 type DebuggerCommand
-    = Break BreakReason CpuSnapshot.CpuSnapshot
-    | Crash CrashReason CpuSnapshot.CpuSnapshot
+    = Break BreakReason DebuggerState.Cpu
+    | Crash CrashReason DebuggerState.Cpu
 
 
 type BreakReason
@@ -25,24 +24,24 @@ type CrashReason
     | UnimplementedOperation String
 
 
-decoder : MemorySnapshot.MemorySnapshot -> Decoder DebuggerCommand
+decoder : DebuggerState.Memory -> Decoder DebuggerCommand
 decoder oldMemory =
     (field "command" Json.string) |> Json.andThen (decodeByCommand oldMemory)
 
 
-decodeByCommand : MemorySnapshot.MemorySnapshot -> String -> Decoder DebuggerCommand
+decodeByCommand : DebuggerState.Memory -> String -> Decoder DebuggerCommand
 decodeByCommand oldMemory cmd =
     case cmd of
         "break" ->
             Json.map2 (,)
                 (field "reason" breakReasonDecoder)
-                (field "snapshot" <| CpuSnapshot.decoder oldMemory)
+                (field "snapshot" <| DebuggerState.memoryDecoder oldMemory)
                 |> Json.andThen (\( reason, snapshot ) -> Json.succeed (Break reason snapshot))
 
         "crash" ->
             Json.map2 (,)
                 (field "reason" crashReasonDecoder)
-                (field "snapshot" <| CpuSnapshot.decoder oldMemory)
+                (field "snapshot" <| DebuggerState.memoryDecoder oldMemory)
                 |> Json.andThen (\( reason, snapshot ) -> Json.succeed (Crash reason snapshot))
 
         _ ->
@@ -99,7 +98,7 @@ breakReasonDecoder =
             )
 
 
-decode : MemorySnapshot.MemorySnapshot -> (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
+decode : DebuggerState.Memory -> (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
 decode oldMemory failHandler successHandler json =
     case Json.decodeString (decoder oldMemory) json of
         Ok cmd ->

@@ -14,14 +14,14 @@ import Css.Elements
 import Keyboard
 import ParseInt exposing (toHex)
 import ConsoleCommand
+import DebuggerState
 import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
 import Instruction
-import CpuSnapshot exposing (CpuSnapshot)
 import Ports
 import Continue
 import Registers
 import Step
-import DebuggerState
+import AppState
 import Console
 import Colors
 import Byte
@@ -29,7 +29,6 @@ import Breakpoints
 import Icons
 import HexEditor
 import Task
-import MemorySnapshot
 import Instruction
 import Styles
 
@@ -58,7 +57,7 @@ main =
 
 
 type alias Model =
-    { debuggerState : DebuggerState.DebuggerState
+    { appState : AppState.AppState
     , messages : List ( String, Int )
     , consoleInput : String
     , cycles : Int
@@ -66,7 +65,7 @@ type alias Model =
     , instructionsDisplayed : Int
     , instructionOffsetMap : Instruction.OffsetMap
     , instructionPivot : Int
-    , memory : MemorySnapshot.MemorySnapshot
+    , memory : DebuggerState.Memory
     , memoryViewOffset : Int
     , registers : Registers.Registers
     , showConsoleInput : Bool
@@ -82,7 +81,7 @@ init : ( Model, Cmd Msg )
 init =
     let
         model =
-            { debuggerState = DebuggerState.NotConnected
+            { appState = AppState.NotConnected
             , messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
             , consoleInput = ""
@@ -135,7 +134,7 @@ type Msg
     | SubmitConsoleCommand
     | SetDisplayConsoleInput Bool
     | KeyPressed Int
-    | UnknownState ( DebuggerState.DebuggerState, DebuggerState.Input )
+    | UnknownState ( AppState.AppState, AppState.Input )
     | NoOp
 
 
@@ -144,13 +143,13 @@ update msg model =
     case msg of
         DebuggerConnectionOpened name ->
             ( model, Cmd.none )
-                |> transitionDebuggerState DebuggerState.Connect
+                |> transitionAppState AppState.Connect
                 |> clearCpuState
                 |> consoleMessage ("Connected to debugger at " ++ name)
 
         DebuggerConnectionClosed _ ->
             ( model, Cmd.none )
-                |> transitionDebuggerState DebuggerState.Disconnect
+                |> transitionAppState AppState.Disconnect
                 |> consoleMessage ("Disconnected from debugger")
 
         DebuggerCommandReceiveSuccess debuggerCommand ->
@@ -197,29 +196,29 @@ update msg model =
 
         StepClick ->
             ( model, Cmd.none )
-                |> transitionDebuggerState DebuggerState.Step
+                |> transitionAppState AppState.Step
 
         StepRequestSuccess resp ->
             ( model, Cmd.none )
-                |> transitionDebuggerState (DebuggerState.StepRequestComplete DebuggerState.Success)
+                |> transitionAppState (AppState.StepRequestComplete AppState.Success)
 
         StepRequestFail err ->
             ( model, Cmd.none )
-                |> transitionDebuggerState (DebuggerState.StepRequestComplete DebuggerState.Fail)
+                |> transitionAppState (AppState.StepRequestComplete AppState.Fail)
                 |> consoleMessage "Step request failed"
 
         ContinueClick ->
             ( model, Cmd.none )
-                |> transitionDebuggerState DebuggerState.Continue
+                |> transitionAppState AppState.Continue
                 |> consoleMessage "Continuing execution..."
 
         ContinueRequestSuccess resp ->
             ( model, Cmd.none )
-                |> transitionDebuggerState (DebuggerState.ContinueRequestComplete DebuggerState.Success)
+                |> transitionAppState (AppState.ContinueRequestComplete AppState.Success)
 
         ContinueRequestFail err ->
             ( model, Cmd.none )
-                |> transitionDebuggerState (DebuggerState.ContinueRequestComplete DebuggerState.Fail)
+                |> transitionAppState (AppState.ContinueRequestComplete AppState.Fail)
                 |> consoleMessage ("Continue request fail: " ++ toString err)
 
         ScrollInstructionIntoView ->
@@ -367,9 +366,9 @@ updateMemoryViewOffset offset ( model, cmd ) =
         consoleMessage "Invalid offset specified" ( model, cmd )
 
 
-transitionDebuggerState : DebuggerState.Input -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-transitionDebuggerState smInput appInput =
-    DebuggerState.transition StepRequestFail StepRequestSuccess ContinueRequestFail ContinueRequestSuccess UnknownState smInput appInput
+transitionAppState : AppState.Input -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+transitionAppState smInput appInput =
+    AppState.transition StepRequestFail StepRequestSuccess ContinueRequestFail ContinueRequestSuccess UnknownState smInput appInput
 
 
 clearCpuState : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -427,20 +426,20 @@ handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
         Break reason snapshot ->
             appInput
-                |> transitionDebuggerState DebuggerState.Pause
+                |> transitionAppState AppState.Pause
                 |> fetchInstructionsIfNeeded
                 |> handleBreakCondition reason snapshot
                 |> \( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd )
 
         Crash reason snapshot ->
             appInput
-                |> transitionDebuggerState DebuggerState.Pause
+                |> transitionAppState AppState.Pause
                 |> \( outputModel, outputCmd ) ->
                     ( applySnapshot outputModel snapshot, outputCmd )
                         |> consoleMessage ("A crash has occurred: " ++ (crashReasonToString reason))
 
 
-applySnapshot : Model -> CpuSnapshot.CpuSnapshot -> Model
+applySnapshot : Model -> DebuggerState.Cpu -> Model
 applySnapshot model snapshot =
     { model
         | registers = snapshot.registers
@@ -475,7 +474,7 @@ sendInstructionRequest appInput =
         ( inputModel, Cmd.batch [ inputCmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
 
 
-handleBreakCondition : BreakReason -> CpuSnapshot -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+handleBreakCondition : BreakReason -> DebuggerState.Cpu -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleBreakCondition breakReason snapshot appInput =
     case breakReason of
         DebuggerCommand.Breakpoint ->
@@ -515,8 +514,8 @@ view model =
         [ div
             [ id Styles.StatusStrip
             , classList
-                [ ( Styles.DebuggerConnected, model.debuggerState /= DebuggerState.NotConnected )
-                , ( Styles.DebuggerNotConnected, model.debuggerState == DebuggerState.NotConnected )
+                [ ( Styles.DebuggerConnected, model.appState /= AppState.NotConnected )
+                , ( Styles.DebuggerNotConnected, model.appState == AppState.NotConnected )
                 ]
             ]
             []
