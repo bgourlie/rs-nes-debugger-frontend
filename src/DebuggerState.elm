@@ -1,4 +1,4 @@
-module DebuggerState exposing (memoryDecoder, getByte, getWord, Cpu, Memory)
+module DebuggerState exposing (decoder, getByte, getWord, State, Memory)
 
 import Debug
 import Json.Decode as Json exposing (Decoder, field)
@@ -7,9 +7,10 @@ import List exposing (drop, take, head)
 import Bitwise
 
 
-type alias Cpu =
+type alias State =
     { cycles : Int
     , registers : Registers.Registers
+    , screen : Screen
     , memory : Memory
     }
 
@@ -18,16 +19,38 @@ type alias Memory =
     ( Int, List Int )
 
 
+type alias Screen =
+    { width : Int
+    , height : Int
+    , buffer : List Int
+    }
+
 type MemoryMessage
     = NoChange Int
     | Updated Memory
 
 
-memoryDecoder : Memory -> Decoder Cpu
-memoryDecoder oldMemory =
-    Json.map3 Cpu
+screenDecoder : Decoder Screen
+screenDecoder =
+    Json.map3 (,,)
+        (field "width" Json.int)
+        (field "height" Json.int)
+        (field "buffer" (Json.list Json.int))
+        |> Json.andThen
+            (\(width, height, packedBytes) ->
+                let
+                    unpacked =
+                        unpackAll packedBytes
+                in
+                    Json.succeed { width = width, height = height, buffer = unpacked }
+            )
+
+decoder : Memory -> Decoder State
+decoder oldMemory =
+    Json.map4 State
         (field "cycles" Json.int)
         (field "registers" Registers.decoder)
+        (field "screen" screenDecoder)
         ((field "memory" memoryMessageDecoder)
             |> Json.andThen
                 (\memorySnapshot ->

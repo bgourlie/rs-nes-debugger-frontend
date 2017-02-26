@@ -438,7 +438,7 @@ handleDebuggerCommand debuggerCommand appInput =
                         |> consoleMessage ("A crash has occurred: " ++ (crashReasonToString reason))
 
 
-applySnapshot : Model -> DebuggerState.Cpu -> Model
+applySnapshot : Model -> DebuggerState.State -> Model
 applySnapshot model snapshot =
     { model
         | registers = snapshot.registers
@@ -473,7 +473,7 @@ sendInstructionRequest appInput =
         ( inputModel, Cmd.batch [ inputCmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
 
 
-handleBreakCondition : BreakReason -> DebuggerState.Cpu -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+handleBreakCondition : BreakReason -> DebuggerState.State -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 handleBreakCondition breakReason snapshot appInput =
     case breakReason of
         DebuggerCommand.Breakpoint ->

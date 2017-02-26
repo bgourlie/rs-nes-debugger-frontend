@@ -6,8 +6,8 @@ import ParseInt exposing (toHex)
 
 
 type DebuggerCommand
-    = Break BreakReason DebuggerState.Cpu
-    | Crash CrashReason DebuggerState.Cpu
+    = Break BreakReason DebuggerState.State
+    | Crash CrashReason DebuggerState.State
 
 
 type BreakReason
@@ -35,13 +35,13 @@ decodeByCommand oldMemory cmd =
         "break" ->
             Json.map2 (,)
                 (field "reason" breakReasonDecoder)
-                (field "snapshot" <| DebuggerState.memoryDecoder oldMemory)
+                (field "snapshot" <| DebuggerState.decoder oldMemory)
                 |> Json.andThen (\( reason, snapshot ) -> Json.succeed (Break reason snapshot))
 
         "crash" ->
             Json.map2 (,)
                 (field "reason" crashReasonDecoder)
-                (field "snapshot" <| DebuggerState.memoryDecoder oldMemory)
+                (field "snapshot" <| DebuggerState.decoder oldMemory)
                 |> Json.andThen (\( reason, snapshot ) -> Json.succeed (Crash reason snapshot))
 
         _ ->
