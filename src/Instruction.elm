@@ -14,7 +14,6 @@ import Registers
 import Byte
 import Breakpoints
 import AddressingMode
-import Icons
 import Colors
 import DebuggerState
 
@@ -142,7 +141,7 @@ view breakpointClickHandler model =
                                             ]
                                         , onClick (breakpointClickHandler offset)
                                         ]
-                                        [ Icons.breakpoint
+                                        [ Breakpoints.icon
                                         ]
                                     ]
                                 , instructionCell model instruction

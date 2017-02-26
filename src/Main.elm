@@ -26,7 +26,6 @@ import Console
 import Colors
 import Byte
 import Breakpoints
-import Icons
 import HexEditor
 import Task
 import Instruction

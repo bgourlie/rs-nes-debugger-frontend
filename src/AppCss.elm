@@ -8,11 +8,10 @@ import Main
 import Instruction
 import Console
 import Byte
-import Icons
 import HexEditor
-import Icons
 import Colors
 import Registers
+import Breakpoints
 
 
 css : Stylesheet
@@ -43,6 +42,6 @@ css =
             , Instruction.styles
             , Console.styles
             , HexEditor.styles
-            , Icons.styles
+            , Breakpoints.styles
             , Registers.styles
             ]
