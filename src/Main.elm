@@ -15,6 +15,7 @@ import ParseInt exposing (toHex)
 import ConsoleCommand
 import DebuggerState
 import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
+import Disassembler
 import Instruction
 import Ports
 import Continue

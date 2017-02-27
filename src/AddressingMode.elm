@@ -1,4 +1,4 @@
-module AddressingMode exposing (decoder, view, getMemory, AddressingMode)
+module AddressingMode exposing (decoder, view, getMemory, AddressingMode(..))
 
 import Html exposing (span, text, Html)
 import Bitwise

@@ -1,4 +1,4 @@
-module Instruction exposing (view, styles, decoder, request, getOffset, Instruction, OffsetMap)
+module Instruction exposing (view, styles, decoder, request, getOffset, Instruction(..), OffsetMap)
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
