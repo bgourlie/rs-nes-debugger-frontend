@@ -5,7 +5,6 @@ import Html.Attributes exposing (disabled, checked, type_, title)
 import Html.Events exposing (onClick)
 import Dom
 import Set exposing (Set)
-import Dict exposing (Dict)
 import Http
 import WebSocket
 import Json.Decode as Json
@@ -15,7 +14,6 @@ import ParseInt exposing (toHex)
 import ConsoleCommand
 import DebuggerState
 import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
-import Disassembler
 import Instruction
 import Ports
 import Continue
@@ -31,6 +29,7 @@ import HexEditor
 import Task
 import Instruction
 import Styles
+import Memory
 
 
 { id, class, classList } =
@@ -62,7 +61,7 @@ type alias Model =
     , consoleInput : String
     , cycles : Int
     , instructionsDisplayed : Int
-    , memory : DebuggerState.Memory
+    , memory : Memory.Memory
     , memoryViewOffset : Int
     , registers : Registers.Registers
     , showConsoleInput : Bool

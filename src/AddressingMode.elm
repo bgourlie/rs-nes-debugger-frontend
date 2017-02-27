@@ -1,4 +1,4 @@
-module AddressingMode exposing (decoder, view, getMemory, AddressingMode(..))
+module AddressingMode exposing (view, getTargetOffset, AddressingMode(..))
 
 import Html exposing (span, text, Html)
 import Bitwise
@@ -7,7 +7,7 @@ import Json.Decode as Json exposing (field, Decoder)
 import ParseInt exposing (toHex)
 import Byte
 import Registers exposing (Registers)
-import DebuggerState exposing (Memory, getByte, getWord)
+import ByteArray exposing (ByteArray)
 
 
 type AddressingMode
@@ -30,8 +30,8 @@ type AddressingMode
 -- TODO: This is something that really needs good tests
 
 
-getMemory : Memory -> Registers -> AddressingMode -> Maybe ( Int, Int )
-getMemory memory registers am =
+getTargetOffset : ByteArray -> Registers -> AddressingMode -> Maybe ( Int, Int )
+getTargetOffset bytes registers am =
     case am of
         IndexedIndirect addr ->
             Nothing
@@ -40,38 +40,38 @@ getMemory memory registers am =
             let
                 -- TODO: for IndirectIndexed, getWord should have zero-page wrapping behavior
                 targetAddr =
-                    (getWord addr memory) + registers.y
+                    (ByteArray.getWord addr bytes) + registers.y
 
                 value =
-                    getByte targetAddr memory
+                    ByteArray.getByte targetAddr bytes
             in
                 Just ( targetAddr, value )
 
         ZeroPage addr ->
-            Just ( addr, getByte addr memory )
+            Just ( addr, ByteArray.getByte addr bytes )
 
         Absolute addr ->
-            Just ( addr, getByte addr memory )
+            Just ( addr, ByteArray.getByte addr bytes )
 
         AbsoluteX addr ->
-            Just ( addr + registers.x, getByte (addr + registers.x) memory )
+            Just ( addr + registers.x, ByteArray.getByte (addr + registers.x) bytes )
 
         AbsoluteY addr ->
-            Just ( addr + registers.y, getByte (addr + registers.y) memory )
+            Just ( addr + registers.y, ByteArray.getByte (addr + registers.y) bytes )
 
         ZeroPageX addr ->
-            Just ( addr + registers.x, getByte (addr + registers.x) memory )
+            Just ( addr + registers.x, ByteArray.getByte (addr + registers.x) bytes )
 
         ZeroPageY addr ->
-            Just ( addr + registers.y, getByte (addr + registers.y) memory )
+            Just ( addr + registers.y, ByteArray.getByte (addr + registers.y) bytes )
 
         Indirect addr ->
             let
                 targetAddr =
-                    getWord addr memory
+                    ByteArray.getWord addr bytes
 
                 value =
-                    getWord targetAddr memory
+                    ByteArray.getWord targetAddr bytes
             in
                 Just ( targetAddr, value )
 
@@ -211,7 +211,7 @@ asmByteView display byte =
                 Byte.Hex ->
                     -- Correctly display negative hex values (accommodates relative addressing)
                     if byte < 0 then
-                        "-$" ++ toHex (twosCompliment byte)
+                        "-$" ++ toHex byte
                     else
                         "$" ++ toHex byte
 
@@ -222,67 +222,3 @@ asmByteView display byte =
                     "'" ++ (Byte.asciiValue byte) ++ "'"
     in
         text str
-
-
-decoder : Decoder AddressingMode
-decoder =
-    Json.map2 (,)
-        (Json.maybe (field "operand" Json.int))
-        (field "mode" Json.string)
-        |> Json.andThen
-            (\( operand, mode ) ->
-                case operand of
-                    Just op ->
-                        case mode of
-                            "IndexedIndirect" ->
-                                Json.succeed <| IndexedIndirect op
-
-                            "IndirectIndexed" ->
-                                Json.succeed <| IndirectIndexed op
-
-                            "ZeroPage" ->
-                                Json.succeed <| ZeroPage op
-
-                            "Immediate" ->
-                                Json.succeed <| Immediate op
-
-                            "Absolute" ->
-                                Json.succeed <| Absolute op
-
-                            "AbsoluteX" ->
-                                Json.succeed <| AbsoluteX op
-
-                            "AbsoluteY" ->
-                                Json.succeed <| AbsoluteY op
-
-                            "ZeroPageX" ->
-                                Json.succeed <| ZeroPageX op
-
-                            "ZeroPageY" ->
-                                Json.succeed <| ZeroPageY op
-
-                            "Indirect" ->
-                                Json.succeed <| Indirect op
-
-                            "Relative" ->
-                                Json.succeed <| Relative op
-
-                            _ ->
-                                Json.fail <| "Unexpected addressing mode with operand specified: " ++ mode
-
-                    Nothing ->
-                        case mode of
-                            "Implied" ->
-                                Json.succeed <| Implied
-
-                            "Accumulator" ->
-                                Json.succeed <| Accumulator
-
-                            _ ->
-                                Json.fail <| "Unexpected mode encountered with no operand specified: " ++ mode
-            )
-
-
-twosCompliment : Int -> Int
-twosCompliment val =
-    (Bitwise.complement val) + 1

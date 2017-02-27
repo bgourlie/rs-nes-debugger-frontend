@@ -2,10 +2,7 @@ module Instruction exposing (view, styles)
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
-import Http
 import List
-import Dict exposing (Dict)
-import Json.Decode as Json exposing (Decoder, field)
 import Css
 import ParseInt exposing (toHex)
 import Styles
@@ -14,7 +11,8 @@ import Byte
 import Breakpoints
 import AddressingMode
 import Colors
-import DebuggerState
+import Memory
+import ByteArray exposing (ByteArray)
 import Disassembler exposing (Instruction(..))
 
 
@@ -26,7 +24,7 @@ type alias Model a =
     { a
         | instructionsDisplayed : Int
         , registers : Registers.Registers
-        , memory : DebuggerState.Memory
+        , memory : Memory.Memory
         , breakpoints : Breakpoints.Breakpoints
         , offsetByteFormat : Byte.Format
         , operandByteFormat : Byte.Format
@@ -70,7 +68,7 @@ view breakpointClickHandler model =
                                         [ Breakpoints.icon
                                         ]
                                     ]
-                                , instructionCell model instruction
+                                , instructionCell model memory instruction
                                 ]
                     )
             )
@@ -86,22 +84,22 @@ getOffset instr =
             offset
 
 
-instructionCell : Model a -> Instruction -> Html msg
-instructionCell model instr =
+instructionCell : Model a -> ByteArray.ByteArray -> Instruction -> Html msg
+instructionCell { registers, memoryByteFormat, operandByteFormat } memory instr =
     case instr of
         Known offset mnemonic addressingMode ->
             let
                 amMemory =
-                    if offset == model.registers.pc then
-                        AddressingMode.getMemory model.memory model.registers addressingMode
+                    if offset == registers.pc then
+                        AddressingMode.getTargetOffset memory registers addressingMode
                     else
                         Nothing
             in
                 Html.td [ class [ Styles.InstructionValue ] ]
                     [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
                     , Html.text " "
-                    , Html.span [ class [ Styles.Operand ] ] (AddressingMode.view model.operandByteFormat addressingMode)
-                    , addressingModeMemoryView model.memoryByteFormat amMemory
+                    , Html.span [ class [ Styles.Operand ] ] (AddressingMode.view operandByteFormat addressingMode)
+                    , addressingModeMemoryView memoryByteFormat amMemory
                     ]
 
         Undefined offset ->
