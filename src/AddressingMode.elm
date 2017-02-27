@@ -1,9 +1,6 @@
 module AddressingMode exposing (view, getTargetOffset, AddressingMode(..))
 
 import Html exposing (span, text, Html)
-import Bitwise
-import ParseInt exposing (toHex)
-import Json.Decode as Json exposing (field, Decoder)
 import ParseInt exposing (toHex)
 import Byte
 import Registers exposing (Registers)

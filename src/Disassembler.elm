@@ -2,7 +2,6 @@ module Disassembler exposing (disassemble, Instruction(..))
 
 import ByteArray exposing (ByteArray)
 import AddressingMode exposing (AddressingMode(..))
-import Bitwise
 
 
 type Instruction
