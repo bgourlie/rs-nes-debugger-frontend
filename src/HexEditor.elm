@@ -9,6 +9,7 @@ import Css.Elements
 import Styles
 import Colors
 import Byte
+import ByteArray
 import DebuggerState
 
 
@@ -82,8 +83,8 @@ intoRows model =
             model.memoryViewOffset
     in
         bytes
-            |> List.drop startOffset
-            |> List.take windowSize
+            |> ByteArray.slice startOffset (startOffset + windowSize)
+            |> ByteArray.toList
             |> List.Split.chunksOfLeft bytesPerRow
             |> List.map2 (,) (List.range 0 (floor (toFloat windowSize / toFloat bytesPerRow)))
             |> List.map

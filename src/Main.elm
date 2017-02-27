@@ -24,6 +24,7 @@ import AppState
 import Console
 import Colors
 import Byte
+import ByteArray
 import Breakpoints
 import HexEditor
 import Task
@@ -87,7 +88,7 @@ init =
             , instructionsDisplayed = 512
             , instructionOffsetMap = Dict.empty
             , instructionPivot = 0
-            , memory = ( 0, [] )
+            , memory = ( 0, ByteArray.empty )
             , memoryViewOffset = 0
             , registers = Registers.new
             , breakpoints = Set.empty
@@ -380,7 +381,7 @@ clearCpuState appInput =
                 | cycles = 0
                 , instructions = []
                 , instructionOffsetMap = Dict.empty
-                , memory = ( 0, [] )
+                , memory = ( 0, ByteArray.empty )
                 , registers = Registers.new
                 , breakpoints = Set.empty
             }

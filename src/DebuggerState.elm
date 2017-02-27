@@ -5,6 +5,7 @@ import Json.Decode as Json exposing (Decoder, field)
 import Registers exposing (Registers)
 import List exposing (drop, take, head)
 import Bitwise
+import ByteArray
 
 
 type alias State =
@@ -16,7 +17,7 @@ type alias State =
 
 
 type alias Memory =
-    ( Int, List Int )
+    ( Int, ByteArray.ByteArray )
 
 
 type alias Screen =
@@ -72,11 +73,7 @@ getByte addr snapshot =
         ( _, memory ) =
             snapshot
     in
-        memory
-            |> drop addr
-            |> take 1
-            |> head
-            |> Maybe.withDefault 0
+        Maybe.withDefault 0 (ByteArray.get addr memory)
 
 
 getWord : Int -> Memory -> Int
@@ -104,42 +101,17 @@ memoryMessageDecoder =
                     "Updated" ->
                         Json.map2 (,)
                             (field "hash" Json.int)
-                            (field "packed_bytes" (Json.list Json.int))
+                            (field "base64" Json.string)
                             |> Json.andThen
-                                (\( hash, packedBytes ) ->
-                                    let
-                                        unpacked =
-                                            unpackAll packedBytes
-                                    in
-                                        Json.succeed <| Updated ( hash, unpacked )
+                                (\( hash, base64 ) ->
+                                    case ByteArray.fromBase64 base64 of
+                                        Ok byteArray ->
+                                            Json.succeed <| Updated ( hash, byteArray )
+
+                                        Err err ->
+                                            Json.fail "Unable to decode base64-encoded memory"
                                 )
 
                     _ ->
                         Json.fail <| "unexpected memory state: " ++ state
             )
-
-
-unpackAll : List Int -> List Int
-unpackAll packedBytes =
-    List.concatMap
-        (\packedByte ->
-            let
-                ( byte1, byte2, byte3, byte4 ) =
-                    unpack32 packedByte
-            in
-                [ byte1, byte2, byte3, byte4 ]
-        )
-        packedBytes
-
-
-unpack32 : Int -> ( Int, Int, Int, Int )
-unpack32 val =
-    let
-        mask =
-            255
-    in
-        ( Bitwise.and val mask
-        , Bitwise.and (Bitwise.shiftRightBy 8 val) mask
-        , Bitwise.and (Bitwise.shiftRightBy 16 val) mask
-        , Bitwise.and (Bitwise.shiftRightBy 24 val) mask
-        )
