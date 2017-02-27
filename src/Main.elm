@@ -61,10 +61,7 @@ type alias Model =
     , messages : List ( String, Int )
     , consoleInput : String
     , cycles : Int
-    , instructions : List Instruction.Instruction
     , instructionsDisplayed : Int
-    , instructionOffsetMap : Instruction.OffsetMap
-    , instructionPivot : Int
     , memory : DebuggerState.Memory
     , memoryViewOffset : Int
     , registers : Registers.Registers
@@ -85,10 +82,7 @@ init =
             , messages = [ ( "Welcome to the rs-nes debugger!", 0 ) ]
             , cycles = 0
             , consoleInput = ""
-            , instructions = []
             , instructionsDisplayed = 512
-            , instructionOffsetMap = Dict.empty
-            , instructionPivot = 0
             , memory = ( 0, ByteArray.empty )
             , memoryViewOffset = 0
             , registers = Registers.new
@@ -128,8 +122,6 @@ type Msg
     | ScrollConsoleFail Dom.Error
     | ScrollConsoleSucceed
     | UpdateMemoryByteFormat Byte.Format
-    | InstructionRequestSuccess (List Instruction.Instruction)
-    | InstructionRequestFail Http.Error
     | UpdateConsoleInput String
     | SubmitConsoleCommand
     | SetDisplayConsoleInput Bool
@@ -222,7 +214,7 @@ update msg model =
                 |> consoleMessage ("Continue request fail: " ++ toString err)
 
         ScrollInstructionIntoView ->
-            ( { model | instructionPivot = model.registers.pc }, Cmd.none )
+            ( model, Cmd.none )
                 |> scrollElementIntoView (toString Styles.CurrentInstruction)
 
         ScrollConsoleSucceed ->
@@ -233,15 +225,6 @@ update msg model =
 
         UpdateMemoryByteFormat byteFormat ->
             ( { model | memoryByteFormat = byteFormat }, Cmd.none )
-
-        InstructionRequestSuccess instructions ->
-            ( model, Cmd.none )
-                |> consoleMessage ("Received " ++ (toString <| List.length instructions) ++ " instructions")
-                |> handleInstructionsResponse instructions
-
-        InstructionRequestFail err ->
-            ( model, Cmd.none )
-                |> consoleMessage ("Continue request fail: " ++ toString err)
 
         UpdateConsoleInput input ->
             ( { model | consoleInput = input }, Cmd.none )
@@ -380,8 +363,6 @@ clearCpuState appInput =
         newModel =
             { model
                 | cycles = 0
-                , instructions = []
-                , instructionOffsetMap = Dict.empty
                 , memory = ( 0, ByteArray.empty )
                 , registers = Registers.new
                 , breakpoints = Set.empty
@@ -395,20 +376,6 @@ scrollElementIntoView class appInput =
     appInput
         |> \( inputMessage, inputCmd ) ->
             ( inputMessage, Cmd.batch [ inputCmd, Ports.scrollElementIntoViewCommand class ] )
-
-
-handleInstructionsResponse : List Instruction.Instruction -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-handleInstructionsResponse instructions appInput =
-    let
-        ( inputModel, inputCmd ) =
-            appInput
-
-        instrMap =
-            instructions
-                |> List.indexedMap (\index instr -> ( Instruction.getOffset instr, index ))
-                |> Dict.fromList
-    in
-        ( { inputModel | instructions = instructions, instructionOffsetMap = instrMap }, inputCmd )
 
 
 onBreakpoint : Model -> Bool
@@ -427,7 +394,6 @@ handleDebuggerCommand debuggerCommand appInput =
         Break reason snapshot ->
             appInput
                 |> transitionAppState AppState.Pause
-                |> fetchInstructionsIfNeeded
                 |> handleBreakCondition reason snapshot
                 |> \( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd )
 
@@ -445,33 +411,7 @@ applySnapshot model snapshot =
         | registers = snapshot.registers
         , cycles = snapshot.cycles
         , memory = snapshot.memory
-        , instructionPivot = snapshot.registers.pc
     }
-
-
-fetchInstructionsIfNeeded : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-fetchInstructionsIfNeeded appInput =
-    let
-        ( inputModel, inputCmd ) =
-            appInput
-    in
-        case inputModel.instructions of
-            [] ->
-                appInput
-                    |> consoleMessage ("Requesting disassembly...")
-                    |> sendInstructionRequest
-
-            _ ->
-                appInput
-
-
-sendInstructionRequest : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
-sendInstructionRequest appInput =
-    let
-        ( inputModel, inputCmd ) =
-            appInput
-    in
-        ( inputModel, Cmd.batch [ inputCmd, Instruction.request InstructionRequestFail InstructionRequestSuccess ] )
 
 
 handleBreakCondition : BreakReason -> DebuggerState.State -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )

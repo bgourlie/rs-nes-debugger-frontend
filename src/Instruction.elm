@@ -1,4 +1,4 @@
-module Instruction exposing (view, styles, decoder, request, getOffset, Instruction(..), OffsetMap)
+module Instruction exposing (view, styles)
 
 import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
@@ -15,27 +15,16 @@ import Breakpoints
 import AddressingMode
 import Colors
 import DebuggerState
+import Disassembler exposing (Instruction(..))
 
 
 { id, class, classList } =
     Styles.helpers
 
 
-type Instruction
-    = Known Int String AddressingMode.AddressingMode
-    | Undefined Int
-
-
-type alias OffsetMap =
-    Dict Int Int
-
-
 type alias Model a =
     { a
-        | instructions : List Instruction
-        , instructionsDisplayed : Int
-        , instructionOffsetMap : OffsetMap
-        , instructionPivot : Int
+        | instructionsDisplayed : Int
         , registers : Registers.Registers
         , memory : DebuggerState.Memory
         , breakpoints : Breakpoints.Breakpoints
@@ -45,80 +34,18 @@ type alias Model a =
     }
 
 
-decoder : Decoder (List Instruction)
-decoder =
-    Json.list instructionDecoder
-
-
-instructionDecoder : Decoder Instruction
-instructionDecoder =
-    (field "kind" Json.string)
-        |> Json.andThen
-            (\kind ->
-                case kind of
-                    "Known" ->
-                        knownDecoder
-
-                    "Undefined" ->
-                        undefinedDecoder
-
-                    _ ->
-                        Json.fail "Unexpected instruction kind"
-            )
-
-
-knownDecoder : Decoder Instruction
-knownDecoder =
-    Json.map3 (,,)
-        (field "offset" Json.int)
-        (field "mnemonic" Json.string)
-        (field "am" AddressingMode.decoder)
-        |> Json.andThen (\( offset, mnemonic, am ) -> Json.succeed (Known offset mnemonic am))
-
-
-undefinedDecoder : Decoder Instruction
-undefinedDecoder =
-    (field "offset" Json.int)
-        |> Json.andThen (\offset -> Json.succeed (Undefined offset))
-
-
-endpoint : String
-endpoint =
-    "http://localhost:9975/instructions"
-
-
-request : (Http.Error -> msg) -> (List Instruction -> msg) -> Cmd msg
-request failHandler successHandler =
-    let
-        result =
-            (\r ->
-                case r of
-                    Ok r ->
-                        successHandler r
-
-                    Err e ->
-                        failHandler e
-            )
-    in
-        Http.send result (Http.get endpoint decoder)
-
-
 view : (Int -> msg) -> Model a -> Html msg
 view breakpointClickHandler model =
     let
-        halfWindowSize =
-            floor <| (toFloat model.instructionsDisplayed) / 2.0
+        startOffset =
+            model.registers.pc
 
-        pivotIndex =
-            Maybe.withDefault 0 (Dict.get model.instructionPivot model.instructionOffsetMap)
-
-        instructionsToDrop =
-            max 0 (pivotIndex - halfWindowSize)
+        ( _, memory ) =
+            model.memory
     in
         Html.table [ id Styles.Instructions ]
-            (model.instructions
-                |> List.drop instructionsToDrop
-                |> List.take model.instructionsDisplayed
+            (memory
+                |> Disassembler.disassemble startOffset model.instructionsDisplayed
                 |> List.map
                     (\instruction ->
                         let

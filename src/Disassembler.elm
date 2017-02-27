@@ -1,13 +1,18 @@
-module Disassembler exposing (..)
+module Disassembler exposing (disassemble, Instruction(..))
 
 import ByteArray exposing (ByteArray)
-import Instruction exposing (Instruction(..))
 import AddressingMode exposing (AddressingMode(..))
+
+
+type Instruction
+    = Known Int String AddressingMode
+    | Undefined Int
 
 
 disassemble : Int -> Int -> ByteArray -> List Instruction
 disassemble startOffset instructionsToDecode memory =
     disassemble_ startOffset instructionsToDecode memory []
+        |> List.reverse
 
 
 disassemble_ : Int -> Int -> ByteArray -> List Instruction -> List Instruction
