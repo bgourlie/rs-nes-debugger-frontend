@@ -2,6 +2,7 @@ module DebuggerCommand exposing (crashReasonToString, decode, DebuggerCommand, D
 
 import Json.Decode as Json exposing (Decoder, field)
 import DebuggerState
+import Memory
 import ParseInt exposing (toHex)
 
 
@@ -24,12 +25,12 @@ type CrashReason
     | UnimplementedOperation String
 
 
-decoder : DebuggerState.Memory -> Decoder DebuggerCommand
+decoder : Memory.Memory -> Decoder DebuggerCommand
 decoder oldMemory =
     (field "command" Json.string) |> Json.andThen (decodeByCommand oldMemory)
 
 
-decodeByCommand : DebuggerState.Memory -> String -> Decoder DebuggerCommand
+decodeByCommand : Memory.Memory -> String -> Decoder DebuggerCommand
 decodeByCommand oldMemory cmd =
     case cmd of
         "break" ->
@@ -98,7 +99,7 @@ breakReasonDecoder =
             )
 
 
-decode : DebuggerState.Memory -> (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
+decode : Memory.Memory -> (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
 decode oldMemory failHandler successHandler json =
     case Json.decodeString (decoder oldMemory) json of
         Ok cmd ->

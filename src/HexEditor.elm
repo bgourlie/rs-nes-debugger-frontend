@@ -10,7 +10,7 @@ import Styles
 import Colors
 import Byte
 import ByteArray
-import DebuggerState
+import Memory
 
 
 { id, class, classList } =
@@ -19,7 +19,7 @@ import DebuggerState
 
 type alias Model a =
     { a
-        | memory : DebuggerState.Memory
+        | memory : Memory.Memory
         , memoryViewOffset : Int
         , offsetByteFormat : Byte.Format
         , memoryByteFormat : Byte.Format
