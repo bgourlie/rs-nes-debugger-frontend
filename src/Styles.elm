@@ -67,3 +67,6 @@ type Id
     | StatusStrip
     | DebuggerStatus
     | Registers
+    | ScreenContainer
+    | Screen
+    | NoScreen

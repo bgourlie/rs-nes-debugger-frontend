@@ -70,6 +70,7 @@ type alias Model =
     , registersByteFormat : Byte.Format
     , offsetByteFormat : Byte.Format
     , operandByteFormat : Byte.Format
+    , screen : DebuggerState.Screen
     }
 
 
@@ -91,6 +92,7 @@ init =
             , registersByteFormat = Byte.Hex
             , offsetByteFormat = Byte.Hex
             , operandByteFormat = Byte.Hex
+            , screen = { width = 0, height = 0, imgData = "" }
             }
     in
         ( model, Cmd.none )
@@ -141,7 +143,7 @@ update msg model =
         DebuggerConnectionClosed _ ->
             ( model, Cmd.none )
                 |> transitionAppState AppState.Disconnect
-                |> consoleMessage ("Disconnected from debugger")
+                |> consoleMessage "Disconnected from debugger"
 
         DebuggerCommandReceiveSuccess debuggerCommand ->
             ( model, Cmd.none )
@@ -410,6 +412,7 @@ applySnapshot model snapshot =
         | registers = snapshot.registers
         , cycles = snapshot.cycles
         , memory = snapshot.memory
+        , screen = snapshot.screen
     }
 
 
@@ -484,7 +487,22 @@ view model =
             , handleInput
             ]
             []
+        , div [ id Styles.ScreenContainer ] [ screen model ]
         ]
+
+
+screen : Model -> Html Msg
+screen { screen } =
+    case screen.imgData of
+        "" ->
+            div [ id Styles.NoScreen ] [ text "No screen data provided" ]
+
+        _ ->
+            Html.img
+                [ id Styles.Screen
+                , Html.Attributes.src ("data:image/png;base64," ++ screen.imgData)
+                ]
+                []
 
 
 handleInput : Html.Attribute Msg
@@ -591,5 +609,10 @@ styles =
         , Styles.withClass Styles.ConsoleInputDisplayed
             [ Css.bottom (Css.em 0)
             ]
+        ]
+    , Styles.id Styles.ScreenContainer
+        [ Css.position Css.fixed
+        , Css.right (Css.px 0)
+        , Css.top (Css.px 0)
         ]
     ]

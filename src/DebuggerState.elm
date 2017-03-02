@@ -1,4 +1,4 @@
-module DebuggerState exposing (decoder, State)
+module DebuggerState exposing (decoder, State, Screen)
 
 import Debug
 import Json.Decode as Json exposing (Decoder, field)
@@ -17,7 +17,7 @@ type alias State =
 type alias Screen =
     { width : Int
     , height : Int
-    , buffer : String
+    , imgData : String
     }
 
 
@@ -26,7 +26,7 @@ screenDecoder =
     Json.map3 Screen
         (field "width" Json.int)
         (field "height" Json.int)
-        (field "buffer" Json.string)
+        (field "imgData" Json.string)
 
 
 decoder : Memory.Memory -> Decoder State
