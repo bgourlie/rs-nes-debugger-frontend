@@ -119,7 +119,7 @@ type Msg
     | UpdateMemoryByteFormat Byte.Format
     | UpdateConsoleInput String
     | SubmitConsoleCommand
-    | SetDisplayConsoleInput Bool
+    | ShowConsoleInput Bool
     | KeyPressed Int
     | UnknownState ( AppState.AppState, AppState.Input )
     | NoOp
@@ -236,7 +236,7 @@ update msg model =
             ( model, Cmd.none )
                 |> handleKeyPress keyCode
 
-        SetDisplayConsoleInput shouldShow ->
+        ShowConsoleInput shouldShow ->
             let
                 task =
                     if shouldShow then
@@ -261,7 +261,7 @@ handleKeyPress keyCode ( model, cmd ) =
             -- "/" for displaying console input
             let
                 ( newModel, newCmd ) =
-                    update (SetDisplayConsoleInput True) model
+                    update (ShowConsoleInput True) model
             in
                 ( newModel, Cmd.batch [ cmd, newCmd ] )
 
@@ -297,46 +297,49 @@ executeConsoleCommand : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 executeConsoleCommand ( model, cmd ) =
     let
         ( newModel, newCmd ) =
-            update (SetDisplayConsoleInput False) { model | consoleInput = "" }
+            case model.consoleInput of
+                "" ->
+                    ( model, cmd )
+
+                _ ->
+                    case ConsoleCommand.parse model.consoleInput of
+                        Ok consoleCommand ->
+                            case consoleCommand of
+                                ConsoleCommand.SetOffsetByteView byteFormat ->
+                                    ( { model | offsetByteFormat = byteFormat }, cmd )
+                                        |> consoleMessage ("Updated offset byte format to " ++ (toString byteFormat))
+
+                                ConsoleCommand.SetMemoryByteView byteFormat ->
+                                    ( { model | memoryByteFormat = byteFormat }, cmd )
+                                        |> consoleMessage ("Updated memory byte format to " ++ (toString byteFormat))
+
+                                ConsoleCommand.SetOperandByteView byteFormat ->
+                                    ( { model | operandByteFormat = byteFormat }, cmd )
+                                        |> consoleMessage ("Updated operand byte format to " ++ (toString byteFormat))
+
+                                ConsoleCommand.SetRegistersByteView byteFormat ->
+                                    ( { model | registersByteFormat = byteFormat }, cmd )
+                                        |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
+
+                                ConsoleCommand.ToggleBreakpoint bpType ->
+                                    case bpType of
+                                        ConsoleCommand.Offset offset ->
+                                            update (ToggleBreakpoint offset) model
+
+                                        ConsoleCommand.Nmi ->
+                                            update ToggleNmiBreakpoint model
+
+                                ConsoleCommand.JumpToMemory offset ->
+                                    updateMemoryViewOffset offset ( model, cmd )
+
+                        Err _ ->
+                            ( model, cmd )
+                                |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
+
+        ( finalModel, showConsoleInputCmd ) =
+            update (ShowConsoleInput False) newModel
     in
-        case model.consoleInput of
-            "" ->
-                ( newModel, newCmd )
-
-            _ ->
-                case ConsoleCommand.parse model.consoleInput of
-                    Ok consoleCommand ->
-                        case consoleCommand of
-                            ConsoleCommand.SetOffsetByteView byteFormat ->
-                                ( { newModel | offsetByteFormat = byteFormat }, newCmd )
-                                    |> consoleMessage ("Updated offset byte format to " ++ (toString byteFormat))
-
-                            ConsoleCommand.SetMemoryByteView byteFormat ->
-                                ( { newModel | memoryByteFormat = byteFormat }, newCmd )
-                                    |> consoleMessage ("Updated memory byte format to " ++ (toString byteFormat))
-
-                            ConsoleCommand.SetOperandByteView byteFormat ->
-                                ( { newModel | operandByteFormat = byteFormat }, newCmd )
-                                    |> consoleMessage ("Updated operand byte format to " ++ (toString byteFormat))
-
-                            ConsoleCommand.SetRegistersByteView byteFormat ->
-                                ( { newModel | registersByteFormat = byteFormat }, newCmd )
-                                    |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
-
-                            ConsoleCommand.ToggleBreakpoint bpType ->
-                                case bpType of
-                                    ConsoleCommand.Offset offset ->
-                                        update (ToggleBreakpoint offset) newModel
-
-                                    ConsoleCommand.Nmi ->
-                                        update ToggleNmiBreakpoint newModel
-
-                            ConsoleCommand.JumpToMemory offset ->
-                                updateMemoryViewOffset offset ( newModel, newCmd )
-
-                    Err _ ->
-                        ( newModel, newCmd )
-                            |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
+        ( { finalModel | consoleInput = "" }, Cmd.batch [ newCmd, showConsoleInputCmd ] )
 
 
 updateMemoryViewOffset : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -480,7 +483,7 @@ view model =
             , classList [ ( Styles.ConsoleInputDisplayed, model.showConsoleInput ) ]
             , Html.Attributes.type_ "text"
             , Html.Events.onInput UpdateConsoleInput
-            , Html.Events.onBlur (SetDisplayConsoleInput False)
+            , Html.Events.onBlur (ShowConsoleInput False)
             , Html.Attributes.value model.consoleInput
             , handleInput
             ]
@@ -514,7 +517,7 @@ handleInput =
                         SubmitConsoleCommand
 
                     27 ->
-                        SetDisplayConsoleInput False
+                        ShowConsoleInput False
 
                     _ ->
                         NoOp
