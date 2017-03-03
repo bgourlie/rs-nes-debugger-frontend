@@ -1,18 +1,23 @@
-module Step exposing (request, Model)
+module Step exposing (request, Result(..))
 
 import Http
 import Json.Decode
 import Json.Decode exposing (Decoder, field)
 
 
-type alias Model =
+type alias SuccessModel =
     { stepped : Bool
     }
 
 
-decoder : Decoder Model
+type Result
+    = Success SuccessModel
+    | Error String
+
+
+decoder : Decoder SuccessModel
 decoder =
-    Json.Decode.map Model
+    Json.Decode.map SuccessModel
         (field "stepped" Json.Decode.bool)
 
 
@@ -21,17 +26,17 @@ endpoint =
     "http://localhost:9975/step"
 
 
-request : (Http.Error -> msg) -> (Model -> msg) -> Cmd msg
-request failHandler successHandler =
+request : (Result -> msg) -> Cmd msg
+request handler =
     let
         result =
             (\r ->
                 case r of
                     Ok r ->
-                        successHandler r
+                        handler <| Success r
 
                     Err e ->
-                        failHandler e
+                        handler <| Error (toString e)
             )
     in
         Http.send result (Http.get endpoint decoder)

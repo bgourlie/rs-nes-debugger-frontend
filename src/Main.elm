@@ -5,7 +5,6 @@ import Html.Attributes exposing (disabled, checked, type_, title)
 import Html.Events exposing (onClick)
 import Dom
 import Set exposing (Set)
-import Http
 import WebSocket
 import Json.Decode as Json
 import Css
@@ -30,6 +29,8 @@ import Task
 import Instruction
 import Styles
 import Memory
+import ToggleBreakpoint
+import ToggleNmiBreakpoint
 
 
 { id, class, classList } =
@@ -105,23 +106,16 @@ init =
 type Msg
     = DebuggerConnectionOpened String
     | DebuggerConnectionClosed String
-    | DebuggerCommandReceiveSuccess DebuggerCommand
-    | DebuggerCommandReceiveFail String
+    | DebuggerCommandReceived DebuggerCommand.ReceiveResult
     | ToggleBreakpoint Int
-    | ToggleBreakpointSuccess Breakpoints.ToggleBreakpointResponse
-    | ToggleBreakpointFail Http.Error
-    | ToggleBreakOnNmi
-    | ToggleBreakOnNmiSuccess Breakpoints.ToggleBreakOnNmiResponse
-    | ToggleBreakOnNmiFail Http.Error
-    | StepClick
-    | StepRequestSuccess Step.Model
-    | StepRequestFail Http.Error
-    | ContinueClick
-    | ContinueRequestSuccess Continue.Model
-    | ContinueRequestFail Http.Error
+    | ToggleBreakpointResult ToggleBreakpoint.Result
+    | ToggleNmiBreakpoint
+    | ToggleNmiBreakpointResult ToggleNmiBreakpoint.Result
+    | Step
+    | StepResult Step.Result
+    | Continue
+    | ContinueResult Continue.Result
     | ScrollInstructionIntoView
-    | ScrollConsoleFail Dom.Error
-    | ScrollConsoleSucceed
     | UpdateMemoryByteFormat Byte.Format
     | UpdateConsoleInput String
     | SubmitConsoleCommand
@@ -145,84 +139,88 @@ update msg model =
                 |> transitionAppState AppState.Disconnect
                 |> consoleMessage "Disconnected from debugger"
 
-        DebuggerCommandReceiveSuccess debuggerCommand ->
-            ( model, Cmd.none )
-                |> handleDebuggerCommand debuggerCommand
+        DebuggerCommandReceived result ->
+            case result of
+                DebuggerCommand.Success debuggerCommand ->
+                    ( model, Cmd.none )
+                        |> handleDebuggerCommand debuggerCommand
 
-        DebuggerCommandReceiveFail msg ->
-            ( model, Cmd.none )
-                |> consoleMessage ("Unable to receive debugger command: " ++ msg)
+                DebuggerCommand.Error msg ->
+                    ( model, Cmd.none )
+                        |> consoleMessage ("Unable to receive debugger command: " ++ msg)
 
         ToggleBreakpoint address ->
-            ( model, Breakpoints.toggleBreakpointRequest address ToggleBreakpointFail ToggleBreakpointSuccess )
+            ( model, ToggleBreakpoint.request address ToggleBreakpointResult )
 
-        ToggleBreakpointSuccess resp ->
-            let
-                message =
-                    if resp.isSet then
-                        "Breakpoint set @ 0x" ++ (toHex resp.offset)
-                    else
-                        "Breakpoint unset @ 0x" ++ (toHex resp.offset)
-            in
-                ( { model | breakpoints = (Breakpoints.toggleBreakpoint model resp.isSet resp.offset) }, Cmd.none )
-                    |> consoleMessage message
+        ToggleBreakpointResult resp ->
+            case resp of
+                ToggleBreakpoint.Success { isSet, offset } ->
+                    let
+                        message =
+                            if isSet then
+                                "Breakpoint set @ 0x" ++ (toHex offset)
+                            else
+                                "Breakpoint unset @ 0x" ++ (toHex offset)
+                    in
+                        ( { model | breakpoints = (Breakpoints.toggleBreakpoint model isSet offset) }, Cmd.none )
+                            |> consoleMessage message
 
-        ToggleBreakpointFail err ->
-            consoleMessage ("Set breakpoint fail: " ++ toString err) ( model, Cmd.none )
+                ToggleBreakpoint.Error msg ->
+                    consoleMessage ("Set breakpoint fail: " ++ msg) ( model, Cmd.none )
 
-        ToggleBreakOnNmi ->
-            ( model, Breakpoints.toggleBreakOnNmiRequest ToggleBreakOnNmiFail ToggleBreakOnNmiSuccess )
+        ToggleNmiBreakpoint ->
+            ( model, ToggleNmiBreakpoint.request ToggleNmiBreakpointResult )
 
-        ToggleBreakOnNmiSuccess resp ->
-            let
-                message =
-                    if resp.isSet then
-                        "Break-on-NMI set"
-                    else
-                        "Break-on-NMI unset"
-            in
-                ( model, Cmd.none )
-                    |> consoleMessage message
+        ToggleNmiBreakpointResult resp ->
+            case resp of
+                ToggleNmiBreakpoint.Success { isSet } ->
+                    let
+                        message =
+                            if isSet then
+                                "Break-on-NMI set"
+                            else
+                                "Break-on-NMI unset"
+                    in
+                        ( model, Cmd.none )
+                            |> consoleMessage message
 
-        ToggleBreakOnNmiFail err ->
-            consoleMessage ("Break-on-NMI toggle fail: " ++ toString err) ( model, Cmd.none )
+                ToggleNmiBreakpoint.Error msg ->
+                    consoleMessage ("Break-on-NMI toggle fail: " ++ msg) ( model, Cmd.none )
 
-        StepClick ->
+        Step ->
             ( model, Cmd.none )
                 |> transitionAppState AppState.Step
 
-        StepRequestSuccess resp ->
-            ( model, Cmd.none )
-                |> transitionAppState (AppState.StepRequestComplete AppState.Success)
+        StepResult resp ->
+            case resp of
+                Step.Success _ ->
+                    ( model, Cmd.none )
+                        |> transitionAppState (AppState.StepRequestComplete AppState.Success)
 
-        StepRequestFail err ->
-            ( model, Cmd.none )
-                |> transitionAppState (AppState.StepRequestComplete AppState.Fail)
-                |> consoleMessage "Step request failed"
+                Step.Error _ ->
+                    ( model, Cmd.none )
+                        |> transitionAppState (AppState.StepRequestComplete AppState.Fail)
+                        |> consoleMessage "Step request failed"
 
-        ContinueClick ->
+        Continue ->
             ( model, Cmd.none )
                 |> transitionAppState AppState.Continue
                 |> consoleMessage "Continuing execution..."
 
-        ContinueRequestSuccess resp ->
-            ( model, Cmd.none )
-                |> transitionAppState (AppState.ContinueRequestComplete AppState.Success)
+        ContinueResult resp ->
+            case resp of
+                Continue.Success _ ->
+                    ( model, Cmd.none )
+                        |> transitionAppState (AppState.ContinueRequestComplete AppState.Success)
 
-        ContinueRequestFail err ->
-            ( model, Cmd.none )
-                |> transitionAppState (AppState.ContinueRequestComplete AppState.Fail)
-                |> consoleMessage ("Continue request fail: " ++ toString err)
+                Continue.Error msg ->
+                    ( model, Cmd.none )
+                        |> transitionAppState (AppState.ContinueRequestComplete AppState.Fail)
+                        |> consoleMessage ("Continue request fail: " ++ msg)
 
         ScrollInstructionIntoView ->
             ( model, Cmd.none )
                 |> scrollElementIntoView (toString Styles.CurrentInstruction)
-
-        ScrollConsoleSucceed ->
-            ( model, Cmd.none )
-
-        ScrollConsoleFail _ ->
-            ( model, Cmd.none )
 
         UpdateMemoryByteFormat byteFormat ->
             ( { model | memoryByteFormat = byteFormat }, Cmd.none )
@@ -271,7 +269,7 @@ handleKeyPress keyCode ( model, cmd ) =
             -- "s" for step
             let
                 ( newModel, newCmd ) =
-                    update StepClick model
+                    update Step model
             in
                 ( newModel, Cmd.batch [ cmd, newCmd ] )
 
@@ -287,7 +285,7 @@ handleKeyPress keyCode ( model, cmd ) =
             -- "c" for continue
             let
                 ( newModel, newCmd ) =
-                    update ContinueClick model
+                    update Continue model
             in
                 ( newModel, Cmd.batch [ cmd, newCmd ] )
 
@@ -331,7 +329,7 @@ executeConsoleCommand ( model, cmd ) =
                                         update (ToggleBreakpoint offset) newModel
 
                                     ConsoleCommand.Nmi ->
-                                        update ToggleBreakOnNmi newModel
+                                        update ToggleNmiBreakpoint newModel
 
                             ConsoleCommand.JumpToMemory offset ->
                                 updateMemoryViewOffset offset ( newModel, newCmd )
@@ -352,7 +350,7 @@ updateMemoryViewOffset offset ( model, cmd ) =
 
 transitionAppState : AppState.Input -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 transitionAppState smInput appInput =
-    AppState.transition StepRequestFail StepRequestSuccess ContinueRequestFail ContinueRequestSuccess UnknownState smInput appInput
+    AppState.transition StepResult ContinueResult UnknownState smInput appInput
 
 
 clearCpuState : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -386,7 +384,7 @@ onBreakpoint model =
 
 consoleMessage : String -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 consoleMessage message appInput =
-    Console.addMessage ScrollConsoleFail ScrollConsoleSucceed message appInput
+    Console.addMessage NoOp message appInput
 
 
 handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -442,7 +440,7 @@ subscriptions model =
         , WebSocket.onOpen DebuggerConnectionOpened
         , WebSocket.onClose DebuggerConnectionClosed
         , WebSocket.listen wsDebuggerEndpoint <|
-            DebuggerCommand.decode model.memory DebuggerCommandReceiveFail DebuggerCommandReceiveSuccess
+            DebuggerCommand.decode model.memory DebuggerCommandReceived
         ]
 
 

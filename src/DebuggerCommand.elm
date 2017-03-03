@@ -1,9 +1,23 @@
-module DebuggerCommand exposing (crashReasonToString, decode, DebuggerCommand, DebuggerCommand(..), BreakReason(..), CrashReason(..))
+module DebuggerCommand
+    exposing
+        ( crashReasonToString
+        , decode
+        , ReceiveResult(..)
+        , DebuggerCommand
+        , DebuggerCommand(..)
+        , BreakReason(..)
+        , CrashReason(..)
+        )
 
 import Json.Decode as Json exposing (Decoder, field)
 import DebuggerState
 import Memory
 import ParseInt exposing (toHex)
+
+
+type ReceiveResult
+    = Success DebuggerCommand
+    | Error String
 
 
 type DebuggerCommand
@@ -99,14 +113,14 @@ breakReasonDecoder =
             )
 
 
-decode : Memory.Memory -> (String -> msg) -> (DebuggerCommand -> msg) -> String -> msg
-decode oldMemory failHandler successHandler json =
+decode : Memory.Memory -> (ReceiveResult -> msg) -> String -> msg
+decode oldMemory handler json =
     case Json.decodeString (decoder oldMemory) json of
         Ok cmd ->
-            successHandler cmd
+            handler <| Success cmd
 
         Err msg ->
-            failHandler msg
+            handler <| Error msg
 
 
 crashReasonToString : CrashReason -> String

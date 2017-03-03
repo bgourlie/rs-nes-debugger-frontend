@@ -4,16 +4,10 @@ module Breakpoints
         , styles
         , toggleBreakpoint
         , isSet
-        , toggleBreakpointRequest
-        , toggleBreakOnNmiRequest
         , Breakpoints
-        , ToggleBreakpointResponse
-        , ToggleBreakOnNmiResponse
         )
 
 import Set exposing (Set)
-import Json.Decode exposing (Decoder, field)
-import Http
 import Html exposing (Html)
 import Svg exposing (svg, circle, path)
 import Svg.Attributes exposing (width, height, fill, cx, cy, r, d, viewBox)
@@ -45,72 +39,6 @@ toggleBreakpoint model isSet offset =
 isSet : Breakpoints -> Int -> Bool
 isSet breakpoints offset =
     Set.member offset breakpoints
-
-
-type alias ToggleBreakpointResponse =
-    { offset : Int
-    , isSet : Bool
-    }
-
-
-type alias ToggleBreakOnNmiResponse =
-    { isSet : Bool
-    }
-
-
-toggleBreakpointResponseDecoder : Decoder ToggleBreakpointResponse
-toggleBreakpointResponseDecoder =
-    Json.Decode.map2 ToggleBreakpointResponse
-        (field "offset" Json.Decode.int)
-        (field "is_set" Json.Decode.bool)
-
-
-toggleBreakOnNmiResponseDecoder : Decoder ToggleBreakOnNmiResponse
-toggleBreakOnNmiResponseDecoder =
-    Json.Decode.map ToggleBreakOnNmiResponse
-        (field "is_set" Json.Decode.bool)
-
-
-toggleBreakpointEndpoint : Int -> String
-toggleBreakpointEndpoint address =
-    "http://localhost:9975/toggle_breakpoint/" ++ toString address
-
-
-toggleBreakOnNmiEndpoint : String
-toggleBreakOnNmiEndpoint =
-    "http://localhost:9975/toggle_break_on_nmi"
-
-
-toggleBreakpointRequest : Int -> (Http.Error -> msg) -> (ToggleBreakpointResponse -> msg) -> Cmd msg
-toggleBreakpointRequest address failHandler successHandler =
-    let
-        result =
-            (\r ->
-                case r of
-                    Ok r ->
-                        successHandler r
-
-                    Err e ->
-                        failHandler e
-            )
-    in
-        Http.send result (Http.get (toggleBreakpointEndpoint address) toggleBreakpointResponseDecoder)
-
-
-toggleBreakOnNmiRequest : (Http.Error -> msg) -> (ToggleBreakOnNmiResponse -> msg) -> Cmd msg
-toggleBreakOnNmiRequest failHandler successHandler =
-    let
-        result =
-            (\r ->
-                case r of
-                    Ok r ->
-                        successHandler r
-
-                    Err e ->
-                        failHandler e
-            )
-    in
-        Http.send result (Http.get toggleBreakOnNmiEndpoint toggleBreakOnNmiResponseDecoder)
 
 
 icon : Html msg

@@ -1,17 +1,22 @@
-module Continue exposing (request, Model)
+module Continue exposing (request, Result(..))
 
 import Http
 import Json.Decode exposing (Decoder, field)
 
 
-type alias Model =
+type Result
+    = Success SuccessModel
+    | Error String
+
+
+type alias SuccessModel =
     { continued : Bool
     }
 
 
-decoder : Decoder Model
+decoder : Decoder SuccessModel
 decoder =
-    Json.Decode.map Model
+    Json.Decode.map SuccessModel
         (field "continued" Json.Decode.bool)
 
 
@@ -20,17 +25,17 @@ endpoint =
     "http://localhost:9975/continue"
 
 
-request : (Http.Error -> msg) -> (Model -> msg) -> Cmd msg
-request failHandler successHandler =
+request : (Result -> msg) -> Cmd msg
+request handler =
     let
         result =
             (\r ->
                 case r of
                     Ok r ->
-                        successHandler r
+                        handler <| Success r
 
                     Err e ->
-                        failHandler e
+                        handler <| Error (toString e)
             )
     in
         Http.send result (Http.get endpoint decoder)

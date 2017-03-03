@@ -2,7 +2,6 @@ module Console exposing (styles, view, addMessage)
 
 import Task exposing (Task)
 import Css
-import Dom
 import Dom.Scroll
 import Html exposing (Html)
 import Css
@@ -24,8 +23,8 @@ type alias Model a =
 -- TODO: break this up into smaller functions
 
 
-addMessage : (Dom.Error -> msg) -> msg -> String -> ( Model a, Cmd msg ) -> ( Model a, Cmd msg )
-addMessage failHandler successHandler message appInput =
+addMessage : msg -> String -> ( Model a, Cmd msg ) -> ( Model a, Cmd msg )
+addMessage handler message appInput =
     let
         ( inputModel, inputCmd ) =
             appInput
@@ -64,10 +63,10 @@ addMessage failHandler successHandler message appInput =
                                         (\r ->
                                             case r of
                                                 Ok _ ->
-                                                    successHandler
+                                                    handler
 
-                                                Err e ->
-                                                    failHandler e
+                                                Err _ ->
+                                                    handler
                                         )
                                 in
                                     ( newItem :: inputModel.messages, Task.attempt result (Dom.Scroll.toBottom <| toString Styles.ConsoleLines) )

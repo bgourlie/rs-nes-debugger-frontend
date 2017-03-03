@@ -1,6 +1,5 @@
 module AppState exposing (transition, AppState(..), RequestResult(..), Input(..))
 
-import Http
 import Step
 import Task
 import Continue
@@ -114,15 +113,13 @@ updateAppState oldState input =
 
 
 transition :
-    (Http.Error -> msg)
-    -> (Step.Model -> msg)
-    -> (Http.Error -> msg)
-    -> (Continue.Model -> msg)
+    (Step.Result -> msg)
+    -> (Continue.Result -> msg)
     -> (( AppState, Input ) -> msg)
     -> Input
     -> ( Model a, Cmd msg )
     -> ( Model a, Cmd msg )
-transition stepFail stepSuccess continueFail continueSuccess unknownStateHandler smInput appInput =
+transition stepHandler continueHandler unknownStateHandler smInput appInput =
     let
         ( inputModel, inputCmd ) =
             appInput
@@ -142,10 +139,10 @@ transition stepFail stepSuccess continueFail continueSuccess unknownStateHandler
             else
                 case newState of
                     Stepping ->
-                        Cmd.batch [ inputCmd, Step.request stepFail stepSuccess ]
+                        Cmd.batch [ inputCmd, Step.request stepHandler ]
 
                     Continuing ->
-                        Cmd.batch [ inputCmd, Continue.request continueFail continueSuccess ]
+                        Cmd.batch [ inputCmd, Continue.request continueHandler ]
 
                     Unknown ->
                         Cmd.batch [ inputCmd, Task.perform unknownStateHandler (Task.succeed ( oldState, smInput )) ]
