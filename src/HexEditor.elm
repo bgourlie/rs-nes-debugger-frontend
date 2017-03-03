@@ -151,7 +151,7 @@ styles =
             [ Css.Elements.thead
                 [ Css.display Css.block
                 , Css.property "flex" "0 1 auto"
-                , Css.overflow Css.auto
+                , Css.overflow Css.hidden
                 , Css.color Colors.hexEditorOffsetColor
                 ]
             , Css.Elements.tbody

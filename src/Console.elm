@@ -85,7 +85,7 @@ styles =
         , Css.backgroundColor Colors.consoleBackground
         , Css.displayFlex
         , Css.flexDirection Css.column
-        , Css.overflowY Css.scroll
+        , Css.overflowY Css.auto
         , Css.children
             [ Styles.class Styles.ConsoleLine
                 [ Css.paddingBottom (Css.em 0.1)

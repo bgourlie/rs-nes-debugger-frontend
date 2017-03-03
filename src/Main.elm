@@ -562,7 +562,7 @@ styles =
                                 ]
                             , Styles.id Styles.InstructionsContainer
                                 [ Css.borderTop3 (Css.px 1) Css.solid Colors.headerBorder
-                                , Css.overflowY Css.scroll
+                                , Css.overflowY Css.auto
                                 , Css.flexGrow (Css.num 1)
                                 , Css.property "height" "calc(100% - 40px)"
                                 ]
