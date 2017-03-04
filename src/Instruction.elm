@@ -154,7 +154,7 @@ valueView display byte =
 
                 _ ->
                     -- Default to hex
-                    "0x" ++ String.padLeft 4 '0' (toHex byte)
+                    "0x" ++ String.padLeft 2 '0' (toHex byte)
     in
         Html.span [] [ Html.text str ]
 
