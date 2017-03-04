@@ -608,6 +608,7 @@ styles =
                         , Css.flexGrow (Css.num 1)
                         , Css.flexBasis (Css.px 0)
                         , Css.overflowY Css.auto
+                        , Css.overflowX Css.hidden
                         , Css.children
                             [ Styles.id Styles.Registers
                                 [ Css.flexGrow (Css.num 1)
