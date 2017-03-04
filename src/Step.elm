@@ -26,8 +26,8 @@ endpoint =
     "http://localhost:9975/step"
 
 
-request : (Result -> msg) -> Cmd msg
-request handler =
+request : (Result -> msg) -> ( a, Cmd msg ) -> ( a, Cmd msg )
+request handler ( inputModel, inputCmd ) =
     let
         result =
             (\r ->
@@ -39,4 +39,4 @@ request handler =
                         handler <| Error (toString e)
             )
     in
-        Http.send result (Http.get endpoint decoder)
+        ( inputModel, Cmd.batch [ inputCmd, Http.send result (Http.get endpoint decoder) ] )

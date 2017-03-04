@@ -27,8 +27,8 @@ responseModelDecoder =
         (field "is_set" Json.Decode.bool)
 
 
-request : Int -> (Result -> msg) -> Cmd msg
-request address handler =
+request : Int -> (Result -> msg) -> ( a, Cmd msg ) -> ( a, Cmd msg )
+request address handler ( inputModel, inputCmd ) =
     let
         result =
             (\r ->
@@ -40,4 +40,4 @@ request address handler =
                         handler <| Error (toString e)
             )
     in
-        Http.send result (Http.get (endpoint address) responseModelDecoder)
+        ( inputModel, Cmd.batch [ inputCmd, Http.send result (Http.get (endpoint address) responseModelDecoder) ] )

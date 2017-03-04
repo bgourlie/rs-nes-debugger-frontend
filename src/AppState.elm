@@ -1,4 +1,4 @@
-module AppState exposing (transition, AppState(..), RequestResult(..), Input(..))
+module AppState exposing (transition, AppState(..), Input(..))
 
 import Step
 import Task
@@ -17,137 +17,58 @@ type alias Model a =
 type AppState
     = NotConnected
     | Paused
-    | Stepping
-    | Continuing
     | Running
-    | Unknown
-
-
-type RequestResult
-    = Success
-    | Fail
 
 
 type Input
     = Connect
     | Disconnect
     | Pause
-    | Step
-    | StepRequestComplete RequestResult
     | Continue
-    | ContinueRequestComplete RequestResult
+    | Step
 
 
-updateAppState : AppState -> Input -> AppState
-updateAppState oldState input =
+transition : Input -> AppState -> Result ( Input, AppState ) AppState
+transition input oldState =
     case oldState of
         NotConnected ->
             case input of
                 Connect ->
-                    Paused
-
-                Step ->
-                    NotConnected
+                    Ok Paused
 
                 _ ->
-                    Unknown
+                    Err ( input, oldState )
 
         Paused ->
             case input of
                 Pause ->
-                    Paused
+                    Ok Paused
 
                 Disconnect ->
-                    NotConnected
+                    Ok NotConnected
 
                 Continue ->
-                    Continuing
+                    Ok Running
 
                 Step ->
-                    Stepping
+                    Ok Running
 
                 _ ->
-                    Unknown
-
-        Stepping ->
-            case input of
-                Step ->
-                    Stepping
-
-                StepRequestComplete _ ->
-                    Paused
-
-                _ ->
-                    Unknown
-
-        Continuing ->
-            case input of
-                Continue ->
-                    Continuing
-
-                ContinueRequestComplete Success ->
-                    Running
-
-                ContinueRequestComplete Fail ->
-                    Paused
-
-                _ ->
-                    Unknown
+                    Err ( input, oldState )
 
         Running ->
             case input of
                 Disconnect ->
-                    NotConnected
+                    Ok NotConnected
 
                 Pause ->
-                    Paused
+                    Ok Paused
 
                 Continue ->
-                    Running
+                    Ok Running
+
+                Step ->
+                    Ok Running
 
                 _ ->
-                    Unknown
-
-        Unknown ->
-            Unknown
-
-
-transition :
-    (Step.Result -> msg)
-    -> (Continue.Result -> msg)
-    -> (( AppState, Input ) -> msg)
-    -> Input
-    -> ( Model a, Cmd msg )
-    -> ( Model a, Cmd msg )
-transition stepHandler continueHandler unknownStateHandler smInput appInput =
-    let
-        ( inputModel, inputCmd ) =
-            appInput
-
-        oldState =
-            inputModel.appState
-
-        newState =
-            updateAppState oldState smInput
-
-        newModel =
-            { inputModel | appState = newState }
-
-        newCmd =
-            if newState == oldState then
-                inputCmd
-            else
-                case newState of
-                    Stepping ->
-                        Cmd.batch [ inputCmd, Step.request stepHandler ]
-
-                    Continuing ->
-                        Cmd.batch [ inputCmd, Continue.request continueHandler ]
-
-                    Unknown ->
-                        Cmd.batch [ inputCmd, Task.perform unknownStateHandler (Task.succeed ( oldState, smInput )) ]
-
-                    _ ->
-                        inputCmd
-    in
-        ( newModel, newCmd )
+                    Err ( input, oldState )

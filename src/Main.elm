@@ -121,7 +121,6 @@ type Msg
     | SubmitConsoleCommand
     | ShowConsoleInput Bool
     | KeyPressed Int
-    | UnknownState ( AppState.AppState, AppState.Input )
     | NoOp
 
 
@@ -131,26 +130,34 @@ update msg model =
         DebuggerConnectionOpened name ->
             ( model, Cmd.none )
                 |> transitionAppState AppState.Connect
-                |> clearCpuState
-                |> consoleMessage ("Connected to debugger at " ++ name)
+                |> andThen
+                    (\input ->
+                        clearCpuState input
+                            |> consoleMessage ("Connected to debugger at " ++ name)
+                    )
 
         DebuggerConnectionClosed _ ->
             ( model, Cmd.none )
                 |> transitionAppState AppState.Disconnect
-                |> consoleMessage "Disconnected from debugger"
+                |> andThen
+                    (\input ->
+                        consoleMessage "Disconnected from debugger" input
+                    )
 
         DebuggerCommandReceived result ->
             case result of
                 DebuggerCommand.Success debuggerCommand ->
                     ( model, Cmd.none )
                         |> handleDebuggerCommand debuggerCommand
+                        |> unwrap
 
                 DebuggerCommand.Error msg ->
                     ( model, Cmd.none )
                         |> consoleMessage ("Unable to receive debugger command: " ++ msg)
 
         ToggleBreakpoint address ->
-            ( model, ToggleBreakpoint.request address ToggleBreakpointResult )
+            ( model, Cmd.none )
+                |> ToggleBreakpoint.request address ToggleBreakpointResult
 
         ToggleBreakpointResult resp ->
             case resp of
@@ -190,33 +197,40 @@ update msg model =
         Step ->
             ( model, Cmd.none )
                 |> transitionAppState AppState.Step
+                |> andThen (Step.request StepResult)
 
         StepResult resp ->
             case resp of
                 Step.Success _ ->
                     ( model, Cmd.none )
-                        |> transitionAppState (AppState.StepRequestComplete AppState.Success)
+                        |> transitionAppState AppState.Pause
+                        |> unwrap
 
-                Step.Error _ ->
+                Step.Error msg ->
                     ( model, Cmd.none )
-                        |> transitionAppState (AppState.StepRequestComplete AppState.Fail)
-                        |> consoleMessage "Step request failed"
+                        |> consoleMessage ("Step request failed:" ++ msg)
+                        |> transitionAppState AppState.Pause
+                        |> unwrap
 
         Continue ->
             ( model, Cmd.none )
                 |> transitionAppState AppState.Continue
-                |> consoleMessage "Continuing execution..."
+                |> andThen
+                    (\input ->
+                        consoleMessage "Continuing execution..." input
+                            |> Continue.request ContinueResult
+                    )
 
         ContinueResult resp ->
             case resp of
                 Continue.Success _ ->
                     ( model, Cmd.none )
-                        |> transitionAppState (AppState.ContinueRequestComplete AppState.Success)
 
                 Continue.Error msg ->
                     ( model, Cmd.none )
-                        |> transitionAppState (AppState.ContinueRequestComplete AppState.Fail)
-                        |> consoleMessage ("Continue request fail: " ++ msg)
+                        |> consoleMessage ("Continue request failed: " ++ msg)
+                        |> transitionAppState AppState.Pause
+                        |> unwrap
 
         ScrollInstructionIntoView ->
             ( model, Cmd.none )
@@ -246,12 +260,28 @@ update msg model =
             in
                 ( { model | showConsoleInput = shouldShow }, Task.attempt (\_ -> NoOp) task )
 
-        UnknownState ( state, input ) ->
-            ( model, Cmd.none )
-                |> consoleMessage ("Uh oh, the following state transition wasn't handled: " ++ (toString input) ++ " -> " ++ (toString state))
-
         NoOp ->
             ( model, Cmd.none )
+
+
+unwrap : Result a a -> a
+unwrap input =
+    case input of
+        Ok output ->
+            output
+
+        Err output ->
+            output
+
+
+andThen : (( a, Cmd msg ) -> ( a, Cmd msg )) -> Result ( a, Cmd msg ) ( a, Cmd msg ) -> ( a, Cmd msg )
+andThen handler input =
+    case input of
+        Ok output ->
+            handler output
+
+        Err output ->
+            output
 
 
 handleKeyPress : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -351,9 +381,27 @@ updateMemoryViewOffset offset ( model, cmd ) =
         consoleMessage "Invalid offset specified" ( model, cmd )
 
 
-transitionAppState : AppState.Input -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+transitionAppState : AppState.Input -> ( Model, Cmd Msg ) -> Result ( Model, Cmd Msg ) ( Model, Cmd Msg )
 transitionAppState smInput appInput =
-    AppState.transition StepResult ContinueResult UnknownState smInput appInput
+    let
+        ( inputModel, inputCmd ) =
+            appInput
+
+        oldState =
+            inputModel.appState
+    in
+        case AppState.transition smInput oldState of
+            Ok newState ->
+                if newState == oldState then
+                    Ok appInput
+                else
+                    Ok ( { inputModel | appState = newState }, inputCmd )
+
+            Err ( input, oldState ) ->
+                Err
+                    (appInput
+                        |> consoleMessage ("Unhandled transition: State = " ++ (toString oldState) ++ ", Input = " ++ (toString input))
+                    )
 
 
 clearCpuState : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -390,21 +438,26 @@ consoleMessage message appInput =
     Console.addMessage NoOp message appInput
 
 
-handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+handleDebuggerCommand : DebuggerCommand -> ( Model, Cmd Msg ) -> Result ( Model, Cmd Msg ) ( Model, Cmd Msg )
 handleDebuggerCommand debuggerCommand appInput =
     case debuggerCommand of
         Break reason snapshot ->
             appInput
                 |> transitionAppState AppState.Pause
-                |> handleBreakCondition reason snapshot
-                |> \( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd )
+                |> Result.map
+                    (\successInput ->
+                        handleBreakCondition reason snapshot successInput
+                            |> \( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd )
+                    )
 
         Crash reason snapshot ->
             appInput
                 |> transitionAppState AppState.Pause
-                |> \( outputModel, outputCmd ) ->
-                    ( applySnapshot outputModel snapshot, outputCmd )
-                        |> consoleMessage ("A crash has occurred: " ++ (crashReasonToString reason))
+                |> Result.map
+                    (\( outputModel, outputCmd ) ->
+                        ( applySnapshot outputModel snapshot, outputCmd )
+                            |> consoleMessage ("A crash has occurred: " ++ (crashReasonToString reason))
+                    )
 
 
 applySnapshot : Model -> DebuggerState.State -> Model
