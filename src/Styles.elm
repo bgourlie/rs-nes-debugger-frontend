@@ -65,8 +65,9 @@ type Id
     | InstructionsContainer
     | Instructions
     | StatusStrip
-    | DebuggerStatus
+    | RegistersContainer
     | Registers
     | ScreenContainer
     | Screen
     | NoScreen
+    | ConnectionStatus

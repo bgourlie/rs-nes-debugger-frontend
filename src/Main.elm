@@ -72,6 +72,7 @@ type alias Model =
     , offsetByteFormat : Byte.Format
     , operandByteFormat : Byte.Format
     , screen : DebuggerState.Screen
+    , breakOnNmi : Bool
     }
 
 
@@ -94,6 +95,7 @@ init =
             , offsetByteFormat = Byte.Hex
             , operandByteFormat = Byte.Hex
             , screen = { width = 0, height = 0, imgData = "" }
+            , breakOnNmi = False
             }
     in
         ( model, Cmd.none )
@@ -188,7 +190,7 @@ update msg model =
                             else
                                 "Break-on-NMI unset"
                     in
-                        ( model, Cmd.none )
+                        ( { model | breakOnNmi = isSet }, Cmd.none )
                             |> consoleMessage message
 
                 ToggleNmiBreakpoint.Error msg ->
@@ -507,17 +509,9 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div [ id Styles.Container ]
-        [ div
-            [ id Styles.StatusStrip
-            , classList
-                [ ( Styles.DebuggerConnected, model.appState /= AppState.NotConnected )
-                , ( Styles.DebuggerNotConnected, model.appState == AppState.NotConnected )
-                ]
-            ]
-            []
-        , div [ id Styles.TwoColumn ]
+        [ div [ id Styles.TwoColumn ]
             [ div [ id Styles.LeftColumn ]
-                [ Registers.view model
+                [ div [ id Styles.RegistersContainer ] [ Registers.view model ]
                 , div [ id Styles.InstructionsContainer ]
                     [ Instruction.view (\address -> ToggleBreakpoint address) model
                     ]
@@ -529,6 +523,24 @@ view model =
                 , div [ id Styles.HexEditorContainer ]
                     [ HexEditor.view model
                     ]
+                ]
+            ]
+        , div
+            [ id Styles.StatusStrip ]
+            [ Html.span []
+                [ text "Break-on-NMI: "
+                , Html.span [] [ text (toString model.breakOnNmi) ]
+                ]
+            , Html.span []
+                [ text "Status: "
+                , Html.span
+                    [ id Styles.ConnectionStatus
+                    , classList
+                        [ ( Styles.DebuggerConnected, model.appState /= AppState.NotConnected )
+                        , ( Styles.DebuggerNotConnected, model.appState == AppState.NotConnected )
+                        ]
+                    ]
+                    [ text <| toString model.appState ]
                 ]
             ]
         , input
@@ -579,6 +591,11 @@ handleInput =
         )
 
 
+registersContainerHeight : Float
+registersContainerHeight =
+    40.0
+
+
 styles : List Css.Snippet
 styles =
     [ Styles.id Styles.Container
@@ -588,19 +605,30 @@ styles =
         , Css.children
             [ Styles.id Styles.StatusStrip
                 [ Css.width (Css.pct 100)
-                , Css.height (Css.px 3)
-                , Styles.withClass Styles.DebuggerConnected
-                    [ Css.backgroundColor Colors.statusStripConnectedColor
+                , Css.borderTop3 (Css.px 1) (Css.solid) (Colors.headerBorder)
+                , Css.padding2 (Css.em 0.2) (Css.em 0.4)
+                , Css.textAlign Css.right
+                , Css.color (Css.hex "#ffffff")
+                , Css.backgroundColor Colors.statusStripBackgroundColor
+                , Css.children
+                    [ Css.everything
+                        [ Css.paddingRight (Css.em 1.0)
+                        , Css.lastChild [ Css.paddingRight (Css.em 0) ]
+                        ]
                     ]
-                , Styles.withClass Styles.DebuggerNotConnected
-                    [ Css.backgroundColor Colors.statusStripDisconnectedColor
+                , Css.descendants
+                    [ Styles.id Styles.ConnectionStatus
+                        [ Styles.withClass Styles.DebuggerConnected
+                            [ Css.color Colors.statusConnected ]
+                        , Styles.withClass Styles.DebuggerNotConnected
+                            [ Css.color Colors.statusDisconnected ]
+                        ]
                     ]
                 ]
             , Styles.id Styles.TwoColumn
                 [ Css.displayFlex
                 , Css.flexDirection Css.row
                 , Css.flexGrow (Css.num 1)
-                , Css.property "height" "calc(100% - 3px)"
                 , Css.children
                     [ Styles.id Styles.LeftColumn
                         [ Css.displayFlex
@@ -610,15 +638,21 @@ styles =
                         , Css.overflowY Css.auto
                         , Css.overflowX Css.hidden
                         , Css.children
-                            [ Styles.id Styles.Registers
-                                [ Css.flexGrow (Css.num 1)
+                            [ Styles.id Styles.RegistersContainer
+                                [ Css.height (Css.px registersContainerHeight)
+                                , Css.backgroundColor Colors.statusStripBackgroundColor
+                                , Css.flexGrow (Css.num 1)
                                 , Css.flexBasis (Css.px 0)
+                                , Css.children
+                                    [ Styles.id Styles.Registers
+                                        []
+                                    ]
                                 ]
                             , Styles.id Styles.InstructionsContainer
                                 [ Css.borderTop3 (Css.px 1) Css.solid Colors.headerBorder
-                                , Css.overflowY Css.auto
                                 , Css.flexGrow (Css.num 1)
-                                , Css.property "height" "calc(100% - 40px)"
+                                , Css.overflowY Css.auto
+                                , Css.property "height" ("calc(100% - " ++ (toString registersContainerHeight) ++ "px)")
                                 ]
                             ]
                         ]
@@ -626,16 +660,15 @@ styles =
                         [ Css.displayFlex
                         , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
                         , Css.flexDirection Css.column
-                        , Css.overflow Css.auto
                         , Css.children
                             [ Styles.id Styles.ConsoleContainer
                                 [ Css.backgroundColor Colors.consoleBackground
                                 , Css.displayFlex
+                                , Css.flexDirection Css.row
                                 , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
                                 ]
                             , Styles.id Styles.HexEditorContainer
-                                [ Css.displayFlex
-                                , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
+                                [ Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
                                 , Css.overflowY Css.auto
                                 , Css.position Css.relative
                                 ]

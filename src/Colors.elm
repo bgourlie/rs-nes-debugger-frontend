@@ -108,11 +108,16 @@ addressModeLiveValue =
     hex "#ffc66d"
 
 
-statusStripConnectedColor : Css.Color
-statusStripConnectedColor =
-    hex "008800"
+statusConnected : Css.Color
+statusConnected =
+    hex "00aa00"
 
 
-statusStripDisconnectedColor : Css.Color
-statusStripDisconnectedColor =
+statusDisconnected : Css.Color
+statusDisconnected =
     hex "990000"
+
+
+statusStripBackgroundColor : Css.Color
+statusStripBackgroundColor =
+    hex "3c3f41"
