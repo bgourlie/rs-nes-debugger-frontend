@@ -115,14 +115,10 @@ addressingModeMemoryView byteFormat amMemory =
                     mem
             in
                 Html.span [ class [ Styles.AddressModeValues ] ]
-                    [ Html.span [ class [ Styles.AddressModeMemoryLocation ] ]
-                        [ Html.text "Target: "
-                        , memoryView byteFormat targetAddr
-                        ]
-                    , Html.span [ class [ Styles.AddressModeMemoryValue ] ]
-                        [ Html.text "Value: "
-                        , valueView byteFormat targetValue
-                        ]
+                    [ Html.text " @ "
+                    , Html.span [ class [ Styles.AddressModeMemoryLocation ] ] [ memoryView byteFormat targetAddr ]
+                    , Html.text " = "
+                    , Html.span [ class [ Styles.AddressModeMemoryValue ] ] [ valueView byteFormat targetValue ]
                     ]
 
         Nothing ->
@@ -213,12 +209,6 @@ styles =
                                 ]
                             , Styles.class Styles.AddressModeValues
                                 [ Css.color Colors.addressModeLiveValue
-                                , Css.paddingLeft (Css.em 1)
-                                , Css.children
-                                    [ Styles.class Styles.AddressModeMemoryValue
-                                        [ Css.paddingLeft (Css.em 1)
-                                        ]
-                                    ]
                                 ]
                             ]
                         , Css.lastChild
