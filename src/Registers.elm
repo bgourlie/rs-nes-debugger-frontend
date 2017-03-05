@@ -179,6 +179,6 @@ view16 display byte =
 styles : List Css.Snippet
 styles =
     [ Styles.id Styles.Registers
-        [ Css.property "border-spacing" "10px 0"
+        [ Css.property "border-spacing" "8px 0"
         ]
     ]

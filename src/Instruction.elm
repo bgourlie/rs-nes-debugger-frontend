@@ -4,6 +4,7 @@ import Html exposing (Html, Attribute)
 import Html.Events exposing (onClick)
 import List
 import Css
+import Css.Elements
 import ParseInt exposing (toHex)
 import Styles
 import Registers
@@ -67,6 +68,7 @@ view breakpointClickHandler model =
                                         ]
                                     ]
                                 , instructionCell model memory instruction
+                                , amMemoryCell model memory instruction
                                 ]
                     )
             )
@@ -82,8 +84,36 @@ getOffset instr =
             offset
 
 
+amMemoryCell : Model a -> ByteArray.ByteArray -> Instruction -> Html msg
+amMemoryCell { registers, memoryByteFormat } memory instr =
+    case instr of
+        Known _ _ addressingMode ->
+            let
+                amMemory =
+                    AddressingMode.getTargetOffset memory registers addressingMode
+            in
+                case amMemory of
+                    Just mem ->
+                        let
+                            ( targetAddr, targetValue ) =
+                                mem
+                        in
+                            Html.td [ class [ Styles.AddressModeValues ] ]
+                                [ Html.text "@ "
+                                , Html.span [ class [ Styles.AddressModeMemoryLocation ] ] [ memoryView memoryByteFormat targetAddr ]
+                                , Html.text " = "
+                                , Html.span [ class [ Styles.AddressModeMemoryValue ] ] [ valueView memoryByteFormat targetValue ]
+                                ]
+
+                    Nothing ->
+                        Html.td [] []
+
+        Undefined _ ->
+            Html.td [] []
+
+
 instructionCell : Model a -> ByteArray.ByteArray -> Instruction -> Html msg
-instructionCell { registers, memoryByteFormat, operandByteFormat } memory instr =
+instructionCell { registers, operandByteFormat } memory instr =
     case instr of
         Known offset mnemonic addressingMode ->
             let
@@ -94,30 +124,10 @@ instructionCell { registers, memoryByteFormat, operandByteFormat } memory instr 
                     [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
                     , Html.text " "
                     , Html.span [ class [ Styles.Operand ] ] (AddressingMode.view operandByteFormat addressingMode)
-                    , addressingModeMemoryView memoryByteFormat amMemory
                     ]
 
         Undefined offset ->
             Html.td [ class [ Styles.InstructionValue ] ] [ Html.span [ class [ Styles.UndefinedOpcode ] ] [ Html.text "---" ] ]
-
-
-addressingModeMemoryView : Byte.Format -> Maybe ( Int, Int ) -> Html msg
-addressingModeMemoryView byteFormat amMemory =
-    case amMemory of
-        Just mem ->
-            let
-                ( targetAddr, targetValue ) =
-                    mem
-            in
-                Html.span [ class [ Styles.AddressModeValues ] ]
-                    [ Html.text " @ "
-                    , Html.span [ class [ Styles.AddressModeMemoryLocation ] ] [ memoryView byteFormat targetAddr ]
-                    , Html.text " = "
-                    , Html.span [ class [ Styles.AddressModeMemoryValue ] ] [ valueView byteFormat targetValue ]
-                    ]
-
-        Nothing ->
-            Html.text ""
 
 
 memoryView : Byte.Format -> Int -> Html msg
@@ -161,12 +171,8 @@ styles =
                 , Styles.withClass Styles.CurrentInstruction
                     [ Css.backgroundColor Colors.currentLine
                     , Css.children
-                        [ Styles.class Styles.InstructionValue
-                            [ Css.children
-                                [ Styles.class Styles.AddressModeValues
-                                    [ Css.color Colors.addressModeActiveValue
-                                    ]
-                                ]
+                        [ Styles.class Styles.AddressModeValues
+                            [ Css.color Colors.addressModeActiveValue
                             ]
                         ]
                     ]
@@ -201,7 +207,8 @@ styles =
                             ]
                         ]
                     , Styles.class Styles.InstructionValue
-                        [ Css.children
+                        [ Css.flexGrow (Css.num 1)
+                        , Css.children
                             [ Styles.class Styles.Mnemonic
                                 [ Css.color Colors.mnemonic
                                 , Css.paddingLeft (Css.em 0.5)
@@ -210,13 +217,11 @@ styles =
                                 [ Css.color Colors.undefinedOpcode
                                 , Css.paddingLeft (Css.em 0.5)
                                 ]
-                            , Styles.class Styles.AddressModeValues
-                                [ Css.color Colors.addressModeInactiveValue
-                                ]
                             ]
-                        , Css.lastChild
-                            [ Css.flexGrow (Css.num 1)
-                            ]
+                        ]
+                    , Styles.class Styles.AddressModeValues
+                        [ Css.color Colors.addressModeInactiveValue
+                        , Css.paddingRight (Css.em 1)
                         ]
                     ]
                 ]

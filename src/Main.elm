@@ -648,7 +648,7 @@ styles =
                     [ Styles.id Styles.LeftColumn
                         [ Css.displayFlex
                         , Css.flexDirection Css.column
-                        , Css.flexGrow (Css.num 1)
+                        , Css.flexGrow (Css.num 0.8)
                         , Css.flexBasis (Css.px 0)
                         , Css.overflowY Css.auto
                         , Css.overflowX Css.hidden
