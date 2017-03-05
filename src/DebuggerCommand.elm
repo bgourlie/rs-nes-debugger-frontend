@@ -35,7 +35,7 @@ type BreakReason
 type CrashReason
     = InvalidOperation String
     | UnexpectedOpcode Int
-    | InvalidVramAccess Int
+    | InvalidVramAccess String Int
     | UnimplementedOperation String
 
 
@@ -74,8 +74,10 @@ crashReasonDecoder =
                             |> Json.andThen (\description -> Json.succeed (InvalidOperation description))
 
                     "invalidVramAccess" ->
-                        (field "address" Json.int)
-                            |> Json.andThen (\address -> Json.succeed (InvalidVramAccess address))
+                        Json.map2 (,)
+                            (field "address" Json.int)
+                            (field "description" Json.string)
+                            |> Json.andThen (\( address, desc ) -> Json.succeed (InvalidVramAccess desc address))
 
                     "unexpectedOpcode" ->
                         (field "opcode" Json.int)
@@ -132,8 +134,8 @@ crashReasonToString reason =
         UnexpectedOpcode opcode ->
             "Unexpected Opcode (0x" ++ String.padLeft 2 '0' (toHex opcode) ++ ")"
 
-        InvalidVramAccess address ->
-            "Invalid VRAM access (0x" ++ String.padLeft 2 '0' (toHex address) ++ ")"
+        InvalidVramAccess description address ->
+            "Invalid VRAM access [0x" ++ String.padLeft 2 '0' (toHex address) ++ "]: " ++ description
 
         UnimplementedOperation description ->
             "Unimplemented operation (" ++ description ++ ")"

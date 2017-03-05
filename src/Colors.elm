@@ -103,9 +103,14 @@ hexEditorBackground =
     hex "#222222"
 
 
-addressModeLiveValue : Css.Color
-addressModeLiveValue =
+addressModeActiveValue : Css.Color
+addressModeActiveValue =
     hex "#ffc66d"
+
+
+addressModeInactiveValue : Css.Color
+addressModeInactiveValue =
+    hex "#777777"
 
 
 statusConnected : Css.Color

@@ -7,6 +7,7 @@ import Byte
 type ConsoleCommand
     = ToggleBreakpoint BreakpointType
     | JumpToMemory Int
+    | SetDisassembleOffset Int
     | SetMemoryByteView Byte.Format
     | SetOffsetByteView Byte.Format
     | SetOperandByteView Byte.Format
@@ -23,6 +24,7 @@ parse input =
     run
         (oneOf
             [ parseBreakpointCommand
+            , parseSetDisassembleOffsetCommand
             , parseJumpToMemoryCommand
             , parseSetMemoryByteView
             , parseSetOffsetByteView
@@ -56,6 +58,14 @@ parseJumpToMemoryCommand =
                 , (keyword "stack") |> andThen (\_ -> (succeed 0x0100))
                 ]
            )
+
+
+parseSetDisassembleOffsetCommand : Parser ConsoleCommand
+parseSetDisassembleOffsetCommand =
+    succeed SetDisassembleOffset
+        |. keyword "sdo"
+        |. spaces
+        |= int
 
 
 parseSetMemoryByteView : Parser ConsoleCommand

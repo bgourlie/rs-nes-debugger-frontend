@@ -23,6 +23,7 @@ import Disassembler exposing (Instruction(..))
 type alias Model a =
     { a
         | instructionsDisplayed : Int
+        , disassembleOffset : Int
         , registers : Registers.Registers
         , memory : Memory.Memory
         , breakpoints : Breakpoints.Breakpoints
@@ -35,15 +36,12 @@ type alias Model a =
 view : (Int -> msg) -> Model a -> Html msg
 view breakpointClickHandler model =
     let
-        startOffset =
-            model.registers.pc
-
         ( _, memory ) =
             model.memory
     in
         Html.table [ id Styles.Instructions ]
             (memory
-                |> Disassembler.disassemble startOffset model.instructionsDisplayed
+                |> Disassembler.disassemble model.disassembleOffset model.instructionsDisplayed
                 |> List.map
                     (\instruction ->
                         let
@@ -90,10 +88,7 @@ instructionCell { registers, memoryByteFormat, operandByteFormat } memory instr 
         Known offset mnemonic addressingMode ->
             let
                 amMemory =
-                    if offset == registers.pc then
-                        AddressingMode.getTargetOffset memory registers addressingMode
-                    else
-                        Nothing
+                    AddressingMode.getTargetOffset memory registers addressingMode
             in
                 Html.td [ class [ Styles.InstructionValue ] ]
                     [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
@@ -163,9 +158,17 @@ styles =
         , Css.children
             [ Styles.class Styles.Instruction
                 [ Css.displayFlex
-                , Css.alignItems Css.stretch
                 , Styles.withClass Styles.CurrentInstruction
                     [ Css.backgroundColor Colors.currentLine
+                    , Css.children
+                        [ Styles.class Styles.InstructionValue
+                            [ Css.children
+                                [ Styles.class Styles.AddressModeValues
+                                    [ Css.color Colors.addressModeActiveValue
+                                    ]
+                                ]
+                            ]
+                        ]
                     ]
                 , Css.children
                     [ Styles.class Styles.InstructionGutter
@@ -208,7 +211,7 @@ styles =
                                 , Css.paddingLeft (Css.em 0.5)
                                 ]
                             , Styles.class Styles.AddressModeValues
-                                [ Css.color Colors.addressModeLiveValue
+                                [ Css.color Colors.addressModeInactiveValue
                                 ]
                             ]
                         , Css.lastChild

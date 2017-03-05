@@ -62,6 +62,7 @@ type alias Model =
     , consoleInput : String
     , cycles : Int
     , instructionsDisplayed : Int
+    , disassembleOffset : Int
     , memory : Memory.Memory
     , memoryViewOffset : Int
     , registers : Registers.Registers
@@ -85,6 +86,7 @@ init =
             , cycles = 0
             , consoleInput = ""
             , instructionsDisplayed = 100
+            , disassembleOffset = 0
             , memory = ( 0, ByteArray.empty )
             , memoryViewOffset = 0
             , registers = Registers.new
@@ -364,6 +366,9 @@ executeConsoleCommand ( model, cmd ) =
                                 ConsoleCommand.JumpToMemory offset ->
                                     updateMemoryViewOffset offset ( model, cmd )
 
+                                ConsoleCommand.SetDisassembleOffset offset ->
+                                    updateDisassembleOffset offset ( model, cmd )
+
                         Err _ ->
                             ( model, cmd )
                                 |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
@@ -379,6 +384,15 @@ updateMemoryViewOffset offset ( model, cmd ) =
     if offset >= 0 && offset <= 0xFFFF then
         ( { model | memoryViewOffset = offset }, cmd )
             |> consoleMessage ("Displaying memory starting at offset 0x" ++ (toHex offset))
+    else
+        consoleMessage "Invalid offset specified" ( model, cmd )
+
+
+updateDisassembleOffset : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
+updateDisassembleOffset offset ( model, cmd ) =
+    if offset >= 0 && offset <= 0xFFFF then
+        ( { model | disassembleOffset = offset }, cmd )
+            |> consoleMessage ("Showing disassembly starting at offset 0x" ++ (toHex offset))
     else
         consoleMessage "Invalid offset specified" ( model, cmd )
 
@@ -469,6 +483,7 @@ applySnapshot model snapshot =
         , cycles = snapshot.cycles
         , memory = snapshot.memory
         , screen = snapshot.screen
+        , disassembleOffset = snapshot.registers.pc
     }
 
 
