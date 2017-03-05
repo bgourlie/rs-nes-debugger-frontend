@@ -336,42 +336,46 @@ executeConsoleCommand ( model, cmd ) =
                     ( model, cmd )
 
                 _ ->
-                    case ConsoleCommand.parse model.consoleInput of
-                        Ok consoleCommand ->
-                            case consoleCommand of
-                                ConsoleCommand.SetOffsetByteView byteFormat ->
-                                    ( { model | offsetByteFormat = byteFormat }, cmd )
-                                        |> consoleMessage ("Updated offset byte format to " ++ (toString byteFormat))
+                    let
+                        ( newerModel, newerCmd ) =
+                            consoleMessage ("> " ++ model.consoleInput) ( model, cmd )
+                    in
+                        case ConsoleCommand.parse model.consoleInput of
+                            Ok consoleCommand ->
+                                case consoleCommand of
+                                    ConsoleCommand.SetOffsetByteView byteFormat ->
+                                        ( { newerModel | offsetByteFormat = byteFormat }, newerCmd )
+                                            |> consoleMessage ("Updated offset byte format to " ++ (toString byteFormat))
 
-                                ConsoleCommand.SetMemoryByteView byteFormat ->
-                                    ( { model | memoryByteFormat = byteFormat }, cmd )
-                                        |> consoleMessage ("Updated memory byte format to " ++ (toString byteFormat))
+                                    ConsoleCommand.SetMemoryByteView byteFormat ->
+                                        ( { newerModel | memoryByteFormat = byteFormat }, newerCmd )
+                                            |> consoleMessage ("Updated memory byte format to " ++ (toString byteFormat))
 
-                                ConsoleCommand.SetOperandByteView byteFormat ->
-                                    ( { model | operandByteFormat = byteFormat }, cmd )
-                                        |> consoleMessage ("Updated operand byte format to " ++ (toString byteFormat))
+                                    ConsoleCommand.SetOperandByteView byteFormat ->
+                                        ( { newerModel | operandByteFormat = byteFormat }, newerCmd )
+                                            |> consoleMessage ("Updated operand byte format to " ++ (toString byteFormat))
 
-                                ConsoleCommand.SetRegistersByteView byteFormat ->
-                                    ( { model | registersByteFormat = byteFormat }, cmd )
-                                        |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
+                                    ConsoleCommand.SetRegistersByteView byteFormat ->
+                                        ( { newerModel | registersByteFormat = byteFormat }, newerCmd )
+                                            |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
 
-                                ConsoleCommand.ToggleBreakpoint bpType ->
-                                    case bpType of
-                                        ConsoleCommand.Offset offset ->
-                                            update (ToggleBreakpoint offset) model
+                                    ConsoleCommand.ToggleBreakpoint bpType ->
+                                        case bpType of
+                                            ConsoleCommand.Offset offset ->
+                                                update (ToggleBreakpoint offset) newerModel
 
-                                        ConsoleCommand.Nmi ->
-                                            update ToggleNmiBreakpoint model
+                                            ConsoleCommand.Nmi ->
+                                                update ToggleNmiBreakpoint newerModel
 
-                                ConsoleCommand.JumpToMemory offset ->
-                                    updateMemoryViewOffset offset ( model, cmd )
+                                    ConsoleCommand.JumpToMemory offset ->
+                                        updateMemoryViewOffset offset ( newerModel, newerCmd )
 
-                                ConsoleCommand.SetDisassembleOffset offset ->
-                                    updateDisassembleOffset offset ( model, cmd )
+                                    ConsoleCommand.SetDisassembleOffset offset ->
+                                        updateDisassembleOffset offset ( newerModel, newerCmd )
 
-                        Err _ ->
-                            ( model, cmd )
-                                |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
+                            Err _ ->
+                                ( newerModel, newerCmd )
+                                    |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
 
         ( finalModel, showConsoleInputCmd ) =
             update (ShowConsoleInput False) newModel
@@ -674,7 +678,7 @@ styles =
                     , Styles.id Styles.RightColumn
                         [ Css.displayFlex
                         , Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
-                        , Css.flexDirection Css.column
+                        , Css.flexDirection Css.columnReverse
                         , Css.children
                             [ Styles.id Styles.ConsoleContainer
                                 [ Css.backgroundColor Colors.consoleBackground
