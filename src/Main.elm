@@ -74,6 +74,7 @@ type alias Model =
     , operandByteFormat : Byte.Format
     , screen : DebuggerState.Screen
     , breakOnNmi : Bool
+    , focusState : FocusState
     }
 
 
@@ -98,9 +99,16 @@ init =
             , operandByteFormat = Byte.Hex
             , screen = { width = 0, height = 0, imgData = "" }
             , breakOnNmi = False
+            , focusState = InstructionsFocused
             }
     in
         ( model, Cmd.none )
+
+
+type FocusState
+    = InstructionsFocused
+    | HexEditorFocused
+    | ConsoleFocused
 
 
 
@@ -125,7 +133,15 @@ type Msg
     | SubmitConsoleCommand
     | ShowConsoleInput Bool
     | KeyPressed Int
+    | UpdateFocusState FocusState
+    | PageUp
+    | PageDown
     | NoOp
+
+
+instructionPageAmount : Int
+instructionPageAmount =
+    15
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -264,6 +280,31 @@ update msg model =
             in
                 ( { model | showConsoleInput = shouldShow }, Task.attempt (\_ -> NoOp) task )
 
+        UpdateFocusState focusState ->
+            ( { model | focusState = focusState }, Cmd.none )
+
+        PageUp ->
+            case model.focusState of
+                InstructionsFocused ->
+                    ( { model | disassembleOffset = max 0 (model.disassembleOffset - instructionPageAmount) }, Cmd.none )
+
+                HexEditorFocused ->
+                    consoleMessage "page up hex editor not implemented" ( model, Cmd.none )
+
+                ConsoleFocused ->
+                    consoleMessage "page up console not implemented" ( model, Cmd.none )
+
+        PageDown ->
+            case model.focusState of
+                InstructionsFocused ->
+                    ( { model | disassembleOffset = min 0xFFFF (model.disassembleOffset + instructionPageAmount) }, Cmd.none )
+
+                HexEditorFocused ->
+                    consoleMessage "page down hex editor not implemented" ( model, Cmd.none )
+
+                ConsoleFocused ->
+                    consoleMessage "page down console not implemented" ( model, Cmd.none )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -320,6 +361,22 @@ handleKeyPress keyCode ( model, cmd ) =
             let
                 ( newModel, newCmd ) =
                     update Continue model
+            in
+                ( newModel, Cmd.batch [ cmd, newCmd ] )
+
+        85 ->
+            -- "u" for page up
+            let
+                ( newModel, newCmd ) =
+                    update PageUp model
+            in
+                ( newModel, Cmd.batch [ cmd, newCmd ] )
+
+        68 ->
+            -- "d" for page down
+            let
+                ( newModel, newCmd ) =
+                    update PageDown model
             in
                 ( newModel, Cmd.batch [ cmd, newCmd ] )
 
@@ -531,15 +588,15 @@ view model =
         [ div [ id Styles.TwoColumn ]
             [ div [ id Styles.LeftColumn ]
                 [ div [ id Styles.RegistersContainer ] [ Registers.view model ]
-                , div [ id Styles.InstructionsContainer ]
+                , div [ id Styles.InstructionsContainer, Html.Attributes.tabindex 1, Html.Events.onFocus (UpdateFocusState InstructionsFocused) ]
                     [ Instruction.view (\address -> ToggleBreakpoint address) model
                     ]
                 ]
             , div [ id Styles.RightColumn ]
-                [ div [ id Styles.ConsoleContainer ]
+                [ div [ id Styles.ConsoleContainer, Html.Attributes.tabindex 3, Html.Events.onFocus (UpdateFocusState ConsoleFocused) ]
                     [ Console.view model
                     ]
-                , div [ id Styles.HexEditorContainer ]
+                , div [ id Styles.HexEditorContainer, Html.Attributes.tabindex 2, Html.Events.onFocus (UpdateFocusState HexEditorFocused) ]
                     [ HexEditor.view model
                     ]
                 ]
@@ -662,16 +719,13 @@ styles =
                                 , Css.backgroundColor Colors.statusStripBackgroundColor
                                 , Css.flexGrow (Css.num 1)
                                 , Css.flexBasis (Css.px 0)
-                                , Css.children
-                                    [ Styles.id Styles.Registers
-                                        []
-                                    ]
                                 ]
                             , Styles.id Styles.InstructionsContainer
                                 [ Css.borderTop3 (Css.px 1) Css.solid Colors.headerBorder
                                 , Css.flexGrow (Css.num 1)
                                 , Css.overflowY Css.auto
                                 , Css.property "height" ("calc(100% - " ++ (toString registersContainerHeight) ++ "px)")
+                                , canFocus
                                 ]
                             ]
                         ]
@@ -685,11 +739,13 @@ styles =
                                 , Css.displayFlex
                                 , Css.flexDirection Css.row
                                 , Css.flex3 (Css.num 1) (Css.num 0) (Css.num 0)
+                                , canFocus
                                 ]
                             , Styles.id Styles.HexEditorContainer
                                 [ Css.flex3 (Css.num 2) (Css.num 0) (Css.num 0)
                                 , Css.overflowY Css.auto
                                 , Css.position Css.relative
+                                , canFocus
                                 ]
                             ]
                         ]
@@ -723,3 +779,14 @@ styles =
         , Css.top (Css.px 0)
         ]
     ]
+
+
+canFocus : Css.Mixin
+canFocus =
+    [ Css.outline Css.none
+    , Css.border3 (Css.px 1) (Css.solid) (Css.hex "#000000")
+    , Css.focus
+        [ Css.borderColor (Css.hex "#A0522D")
+        ]
+    ]
+        |> Css.mixin
