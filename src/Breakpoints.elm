@@ -1,19 +1,19 @@
 module Breakpoints
     exposing
-        ( icon
+        ( Breakpoints
+        , icon
+        , isSet
         , styles
         , toggleBreakpoint
-        , isSet
-        , Breakpoints
         )
 
-import Set exposing (Set)
-import Html exposing (Html)
-import Svg exposing (svg, circle, path)
-import Svg.Attributes exposing (width, height, fill, cx, cy, r, d, viewBox)
-import Css
 import Colors
+import Css
+import Html exposing (Html)
+import Set exposing (Set)
 import Styles
+import Svg exposing (circle, path, svg)
+import Svg.Attributes exposing (cx, cy, d, fill, height, r, viewBox, width)
 
 
 { id, class, classList } =

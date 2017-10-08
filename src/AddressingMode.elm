@@ -1,10 +1,10 @@
-module AddressingMode exposing (view, getTargetOffset, AddressingMode(..))
+module AddressingMode exposing (AddressingMode(..), getTargetOffset, view)
 
-import Html exposing (span, text, Html)
-import ParseInt exposing (toHex)
 import Byte
-import Registers exposing (Registers)
 import ByteArray exposing (ByteArray)
+import Html exposing (Html, span, text)
+import ParseInt exposing (toHex)
+import Registers exposing (Registers)
 
 
 type AddressingMode
@@ -37,12 +37,12 @@ getTargetOffset bytes registers am =
             let
                 -- TODO: for IndirectIndexed, getWord should have zero-page wrapping behavior
                 targetAddr =
-                    (ByteArray.getWord addr bytes) + registers.y
+                    ByteArray.getWord addr bytes + registers.y
 
                 value =
                     ByteArray.getByte targetAddr bytes
             in
-                Just ( targetAddr, value )
+            Just ( targetAddr, value )
 
         ZeroPage addr ->
             Just ( addr, ByteArray.getByte addr bytes )
@@ -70,7 +70,7 @@ getTargetOffset bytes registers am =
                 value =
                     ByteArray.getWord targetAddr bytes
             in
-                Just ( targetAddr, value )
+            Just ( targetAddr, value )
 
         _ ->
             Nothing
@@ -216,6 +216,6 @@ asmByteView display byte =
                     toString byte
 
                 Byte.Ascii ->
-                    "'" ++ (Byte.asciiValue byte) ++ "'"
+                    "'" ++ Byte.asciiValue byte ++ "'"
     in
-        text str
+    text str

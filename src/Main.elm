@@ -1,36 +1,35 @@
 module Main exposing (..)
 
-import Html exposing (Html, Attribute, div, text, ul, li, button, header, input, fieldset)
-import Html.Attributes exposing (disabled, checked, type_, title)
-import Html.Events exposing (onClick)
-import Dom
-import Set exposing (Set)
-import WebSocket
-import Json.Decode as Json
-import Css
-import Keyboard
-import ParseInt exposing (toHex)
-import ConsoleCommand
-import DebuggerState
-import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
-import Instruction
-import Ports
-import Continue
-import Registers
-import Step
 import AppState
-import Console
-import Colors
+import Breakpoints
 import Byte
 import ByteArray
-import Breakpoints
+import Colors
+import Console
+import ConsoleCommand
+import Continue
+import Css
+import DebuggerCommand exposing (BreakReason, CrashReason, DebuggerCommand(..), crashReasonToString)
+import DebuggerState
+import Dom
 import HexEditor
-import Task
+import Html exposing (Attribute, Html, button, div, fieldset, header, input, li, text, ul)
+import Html.Attributes exposing (checked, disabled, title, type_)
+import Html.Events exposing (onClick)
 import Instruction
-import Styles
+import Json.Decode as Json
+import Keyboard
 import Memory
+import ParseInt exposing (toHex)
+import Ports
+import Registers
+import Set exposing (Set)
+import Step
+import Styles
+import Task
 import ToggleBreakpoint
 import ToggleNmiBreakpoint
+import WebSocket
 
 
 { id, class, classList } =
@@ -102,7 +101,7 @@ init =
             , focusState = InstructionsFocused
             }
     in
-        ( model, Cmd.none )
+    ( model, Cmd.none )
 
 
 type FocusState
@@ -185,12 +184,12 @@ update msg model =
                     let
                         message =
                             if isSet then
-                                "Breakpoint set @ 0x" ++ (toHex offset)
+                                "Breakpoint set @ 0x" ++ toHex offset
                             else
-                                "Breakpoint unset @ 0x" ++ (toHex offset)
+                                "Breakpoint unset @ 0x" ++ toHex offset
                     in
-                        ( { model | breakpoints = (Breakpoints.toggleBreakpoint model isSet offset) }, Cmd.none )
-                            |> consoleMessage message
+                    ( { model | breakpoints = Breakpoints.toggleBreakpoint model isSet offset }, Cmd.none )
+                        |> consoleMessage message
 
                 ToggleBreakpoint.Error msg ->
                     consoleMessage ("Set breakpoint fail: " ++ msg) ( model, Cmd.none )
@@ -208,8 +207,8 @@ update msg model =
                             else
                                 "Break-on-NMI unset"
                     in
-                        ( { model | breakOnNmi = isSet }, Cmd.none )
-                            |> consoleMessage message
+                    ( { model | breakOnNmi = isSet }, Cmd.none )
+                        |> consoleMessage message
 
                 ToggleNmiBreakpoint.Error msg ->
                     consoleMessage ("Break-on-NMI toggle fail: " ++ msg) ( model, Cmd.none )
@@ -278,7 +277,7 @@ update msg model =
                     else
                         Dom.blur (toString Styles.ConsoleInput)
             in
-                ( { model | showConsoleInput = shouldShow }, Task.attempt (\_ -> NoOp) task )
+            ( { model | showConsoleInput = shouldShow }, Task.attempt (\_ -> NoOp) task )
 
         UpdateFocusState focusState ->
             ( { model | focusState = focusState }, Cmd.none )
@@ -338,7 +337,7 @@ handleKeyPress keyCode ( model, cmd ) =
                 ( newModel, newCmd ) =
                     update (ShowConsoleInput True) model
             in
-                ( newModel, Cmd.batch [ cmd, newCmd ] )
+            ( newModel, Cmd.batch [ cmd, newCmd ] )
 
         83 ->
             -- "s" for step
@@ -346,7 +345,7 @@ handleKeyPress keyCode ( model, cmd ) =
                 ( newModel, newCmd ) =
                     update Step model
             in
-                ( newModel, Cmd.batch [ cmd, newCmd ] )
+            ( newModel, Cmd.batch [ cmd, newCmd ] )
 
         70 ->
             -- "f" for find current instruction
@@ -354,7 +353,7 @@ handleKeyPress keyCode ( model, cmd ) =
                 ( newModel, newCmd ) =
                     update ScrollInstructionIntoView model
             in
-                ( newModel, Cmd.batch [ cmd, newCmd ] )
+            ( newModel, Cmd.batch [ cmd, newCmd ] )
 
         67 ->
             -- "c" for continue
@@ -362,7 +361,7 @@ handleKeyPress keyCode ( model, cmd ) =
                 ( newModel, newCmd ) =
                     update Continue model
             in
-                ( newModel, Cmd.batch [ cmd, newCmd ] )
+            ( newModel, Cmd.batch [ cmd, newCmd ] )
 
         85 ->
             -- "u" for page up
@@ -370,7 +369,7 @@ handleKeyPress keyCode ( model, cmd ) =
                 ( newModel, newCmd ) =
                     update PageUp model
             in
-                ( newModel, Cmd.batch [ cmd, newCmd ] )
+            ( newModel, Cmd.batch [ cmd, newCmd ] )
 
         68 ->
             -- "d" for page down
@@ -378,7 +377,7 @@ handleKeyPress keyCode ( model, cmd ) =
                 ( newModel, newCmd ) =
                     update PageDown model
             in
-                ( newModel, Cmd.batch [ cmd, newCmd ] )
+            ( newModel, Cmd.batch [ cmd, newCmd ] )
 
         _ ->
             ( model, cmd )
@@ -397,54 +396,54 @@ executeConsoleCommand ( model, cmd ) =
                         ( newerModel, newerCmd ) =
                             consoleMessage ("> " ++ model.consoleInput) ( model, cmd )
                     in
-                        case ConsoleCommand.parse model.consoleInput of
-                            Ok consoleCommand ->
-                                case consoleCommand of
-                                    ConsoleCommand.SetOffsetByteView byteFormat ->
-                                        ( { newerModel | offsetByteFormat = byteFormat }, newerCmd )
-                                            |> consoleMessage ("Updated offset byte format to " ++ (toString byteFormat))
+                    case ConsoleCommand.parse model.consoleInput of
+                        Ok consoleCommand ->
+                            case consoleCommand of
+                                ConsoleCommand.SetOffsetByteView byteFormat ->
+                                    ( { newerModel | offsetByteFormat = byteFormat }, newerCmd )
+                                        |> consoleMessage ("Updated offset byte format to " ++ toString byteFormat)
 
-                                    ConsoleCommand.SetMemoryByteView byteFormat ->
-                                        ( { newerModel | memoryByteFormat = byteFormat }, newerCmd )
-                                            |> consoleMessage ("Updated memory byte format to " ++ (toString byteFormat))
+                                ConsoleCommand.SetMemoryByteView byteFormat ->
+                                    ( { newerModel | memoryByteFormat = byteFormat }, newerCmd )
+                                        |> consoleMessage ("Updated memory byte format to " ++ toString byteFormat)
 
-                                    ConsoleCommand.SetOperandByteView byteFormat ->
-                                        ( { newerModel | operandByteFormat = byteFormat }, newerCmd )
-                                            |> consoleMessage ("Updated operand byte format to " ++ (toString byteFormat))
+                                ConsoleCommand.SetOperandByteView byteFormat ->
+                                    ( { newerModel | operandByteFormat = byteFormat }, newerCmd )
+                                        |> consoleMessage ("Updated operand byte format to " ++ toString byteFormat)
 
-                                    ConsoleCommand.SetRegistersByteView byteFormat ->
-                                        ( { newerModel | registersByteFormat = byteFormat }, newerCmd )
-                                            |> consoleMessage ("Updated registers byte format to " ++ (toString byteFormat))
+                                ConsoleCommand.SetRegistersByteView byteFormat ->
+                                    ( { newerModel | registersByteFormat = byteFormat }, newerCmd )
+                                        |> consoleMessage ("Updated registers byte format to " ++ toString byteFormat)
 
-                                    ConsoleCommand.ToggleBreakpoint bpType ->
-                                        case bpType of
-                                            ConsoleCommand.Offset offset ->
-                                                update (ToggleBreakpoint offset) newerModel
+                                ConsoleCommand.ToggleBreakpoint bpType ->
+                                    case bpType of
+                                        ConsoleCommand.Offset offset ->
+                                            update (ToggleBreakpoint offset) newerModel
 
-                                            ConsoleCommand.Nmi ->
-                                                update ToggleNmiBreakpoint newerModel
+                                        ConsoleCommand.Nmi ->
+                                            update ToggleNmiBreakpoint newerModel
 
-                                    ConsoleCommand.JumpToMemory offset ->
-                                        updateMemoryViewOffset offset ( newerModel, newerCmd )
+                                ConsoleCommand.JumpToMemory offset ->
+                                    updateMemoryViewOffset offset ( newerModel, newerCmd )
 
-                                    ConsoleCommand.SetDisassembleOffset offset ->
-                                        updateDisassembleOffset offset ( newerModel, newerCmd )
+                                ConsoleCommand.SetDisassembleOffset offset ->
+                                    updateDisassembleOffset offset ( newerModel, newerCmd )
 
-                            Err _ ->
-                                ( newerModel, newerCmd )
-                                    |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
+                        Err _ ->
+                            ( newerModel, newerCmd )
+                                |> consoleMessage ("Unknown console command: " ++ model.consoleInput)
 
         ( finalModel, showConsoleInputCmd ) =
             update (ShowConsoleInput False) newModel
     in
-        ( { finalModel | consoleInput = "" }, Cmd.batch [ newCmd, showConsoleInputCmd ] )
+    ( { finalModel | consoleInput = "" }, Cmd.batch [ newCmd, showConsoleInputCmd ] )
 
 
 updateMemoryViewOffset : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 updateMemoryViewOffset offset ( model, cmd ) =
     if offset >= 0 && offset <= 0xFFFF then
         ( { model | memoryViewOffset = offset }, cmd )
-            |> consoleMessage ("Displaying memory starting at offset 0x" ++ (toHex offset))
+            |> consoleMessage ("Displaying memory starting at offset 0x" ++ toHex offset)
     else
         consoleMessage "Invalid offset specified" ( model, cmd )
 
@@ -453,7 +452,7 @@ updateDisassembleOffset : Int -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 updateDisassembleOffset offset ( model, cmd ) =
     if offset >= 0 && offset <= 0xFFFF then
         ( { model | disassembleOffset = offset }, cmd )
-            |> consoleMessage ("Showing disassembly starting at offset 0x" ++ (toHex offset))
+            |> consoleMessage ("Showing disassembly starting at offset 0x" ++ toHex offset)
     else
         consoleMessage "Invalid offset specified" ( model, cmd )
 
@@ -467,18 +466,18 @@ transitionAppState smInput appInput =
         oldState =
             inputModel.appState
     in
-        case AppState.transition smInput oldState of
-            Ok newState ->
-                if newState == oldState then
-                    Ok appInput
-                else
-                    Ok ( { inputModel | appState = newState }, inputCmd )
+    case AppState.transition smInput oldState of
+        Ok newState ->
+            if newState == oldState then
+                Ok appInput
+            else
+                Ok ( { inputModel | appState = newState }, inputCmd )
 
-            Err ( input, oldState ) ->
-                Err
-                    (appInput
-                        |> consoleMessage ("Unhandled transition: State = " ++ (toString oldState) ++ ", Input = " ++ (toString input))
-                    )
+        Err ( input, oldState ) ->
+            Err
+                (appInput
+                    |> consoleMessage ("Unhandled transition: State = " ++ toString oldState ++ ", Input = " ++ toString input)
+                )
 
 
 clearCpuState : ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
@@ -495,14 +494,15 @@ clearCpuState appInput =
                 , breakpoints = Set.empty
             }
     in
-        ( newModel, cmd )
+    ( newModel, cmd )
 
 
 scrollElementIntoView : String -> ( Model, Cmd Msg ) -> ( Model, Cmd Msg )
 scrollElementIntoView class appInput =
     appInput
-        |> \( inputMessage, inputCmd ) ->
-            ( inputMessage, Cmd.batch [ inputCmd, Ports.scrollElementIntoViewCommand class ] )
+        |> (\( inputMessage, inputCmd ) ->
+                ( inputMessage, Cmd.batch [ inputCmd, Ports.scrollElementIntoViewCommand class ] )
+           )
 
 
 onBreakpoint : Model -> Bool
@@ -524,7 +524,7 @@ handleDebuggerCommand debuggerCommand appInput =
                 |> Result.map
                     (\successInput ->
                         handleBreakCondition reason snapshot successInput
-                            |> \( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd )
+                            |> (\( outputModel, outputCmd ) -> ( applySnapshot outputModel snapshot, outputCmd ))
                     )
 
         Crash reason snapshot ->
@@ -533,7 +533,7 @@ handleDebuggerCommand debuggerCommand appInput =
                 |> Result.map
                     (\( outputModel, outputCmd ) ->
                         ( applySnapshot outputModel snapshot, outputCmd )
-                            |> consoleMessage ("A crash has occurred: " ++ (crashReasonToString reason))
+                            |> consoleMessage ("A crash has occurred: " ++ crashReasonToString reason)
                     )
 
 
@@ -681,7 +681,7 @@ styles =
         , Css.children
             [ Styles.id Styles.StatusStrip
                 [ Css.width (Css.pct 100)
-                , Css.borderTop3 (Css.px 1) (Css.solid) (Colors.headerBorder)
+                , Css.borderTop3 (Css.px 1) Css.solid Colors.headerBorder
                 , Css.padding2 (Css.em 0.2) (Css.em 0.4)
                 , Css.textAlign Css.right
                 , Css.color (Css.hex "#ffffff")
@@ -724,7 +724,7 @@ styles =
                                 [ Css.borderTop3 (Css.px 1) Css.solid Colors.headerBorder
                                 , Css.flexGrow (Css.num 1)
                                 , Css.overflowY Css.auto
-                                , Css.property "height" ("calc(100% - " ++ (toString registersContainerHeight) ++ "px)")
+                                , Css.property "height" ("calc(100% - " ++ toString registersContainerHeight ++ "px)")
                                 , canFocus
                                 ]
                             ]
@@ -784,7 +784,7 @@ styles =
 canFocus : Css.Mixin
 canFocus =
     [ Css.outline Css.none
-    , Css.border3 (Css.px 1) (Css.solid) (Css.hex "#000000")
+    , Css.border3 (Css.px 1) Css.solid (Css.hex "#000000")
     , Css.focus
         [ Css.borderColor (Css.hex "#A0522D")
         ]

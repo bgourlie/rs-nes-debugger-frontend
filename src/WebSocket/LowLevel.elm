@@ -1,19 +1,19 @@
 module WebSocket.LowLevel
     exposing
-        ( WebSocket
-        , open
+        ( BadClose(..)
+        , BadOpen(..)
+        , BadSend(..)
         , Settings
-        , send
+        , WebSocket
+        , bytesQueued
         , close
         , closeWith
-        , bytesQueued
-        , BadOpen(..)
-        , BadClose(..)
-        , BadSend(..)
+        , open
+        , send
         )
 
 {-| Low-level bindings to [the JavaScript API for web sockets][ws]. This is
-useful primarily for making effect modules like [WebSocket](WebSocket). So
+useful primarily for making effect modules like <WebSocket>. So
 if you happen to be the creator of Elixir’s Phoenix framework, and you want
 it to be super easy to use channels, this module will help you make a really
 nice subscription-based API. If you are someone else, you probably do not want
@@ -21,13 +21,19 @@ these things.
 
 [ws]: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
 
+
 # WebSockets
+
 @docs WebSocket
 
+
 # Using WebSockets
+
 @docs open, Settings, send, close, closeWith, bytesQueued
 
+
 # Errors
+
 @docs BadOpen, BadClose, BadSend
 
 -}
@@ -43,6 +49,7 @@ it up once and keep using it. This means it is faster to send messages.
 There is a request/response pattern for all HTTP requests. Client asks for
 something, server gives some response. With websockets, you can drive messages
 from the server instead.
+
 -}
 type WebSocket
     = WebSocket
@@ -69,6 +76,7 @@ You will typically want to set up a channel before opening a WebSocket. That
 way the `onMessage` and `onClose` can communicate with the other parts of your
 program. **Ideally this is handled by the effect library you are using though.
 Most people should not be working with this stuff directly.**
+
 -}
 type alias Settings =
     { onMessage : WebSocket -> String -> Task Never ()
@@ -78,10 +86,10 @@ type alias Settings =
 
 {-| Opening the websocket went wrong because:
 
-  1. Maybe you are on an `https://` domain trying to use an `ws://` websocket
-  instead of `wss://`.
+1.  Maybe you are on an `https://` domain trying to use an `ws://` websocket
+    instead of `wss://`.
 
-  2. You gave an invalid URL or something crazy.
+2.  You gave an invalid URL or something crazy.
 
 -}
 type BadOpen
@@ -102,13 +110,13 @@ close socket =
 
 In addition to providing the `WebSocket` you want to close, you must provide:
 
-  1. A status code explaining why the connection is being closed. The default
-  value is 1000, indicating indicates a normal "transaction complete" closure.
-  There are a ton of different status codes though. See them all
-  [here](https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent).
+1.  A status code explaining why the connection is being closed. The default
+    value is 1000, indicating indicates a normal "transaction complete" closure.
+    There are a ton of different status codes though. See them all
+    [here](https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent).
 
-  2. A human-readable string explaining why the connection is closing. This
-  string must be no longer than 123 bytes of UTF-8 text (not characters).
+2.  A human-readable string explaining why the connection is closing. This
+    string must be no longer than 123 bytes of UTF-8 text (not characters).
 
 -}
 closeWith : Int -> String -> WebSocket -> Task x (Maybe BadClose)

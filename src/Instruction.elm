@@ -1,20 +1,20 @@
-module Instruction exposing (view, styles)
+module Instruction exposing (styles, view)
 
-import Html exposing (Html, Attribute)
-import Html.Events exposing (onClick)
-import List
+import AddressingMode
+import Breakpoints
+import Byte
+import ByteArray exposing (ByteArray)
+import Colors
 import Css
 import Css.Elements
-import ParseInt exposing (toHex)
-import Styles
-import Registers
-import Byte
-import Breakpoints
-import AddressingMode
-import Colors
-import Memory
-import ByteArray exposing (ByteArray)
 import Disassembler exposing (Instruction(..))
+import Html exposing (Attribute, Html)
+import Html.Events exposing (onClick)
+import List
+import Memory
+import ParseInt exposing (toHex)
+import Registers
+import Styles
 
 
 { id, class, classList } =
@@ -40,38 +40,38 @@ view breakpointClickHandler model =
         ( _, memory ) =
             model.memory
     in
-        Html.table [ id Styles.Instructions ]
-            (memory
-                |> Disassembler.disassemble model.disassembleOffset model.instructionsDisplayed
-                |> List.map
-                    (\instruction ->
-                        let
-                            offset =
-                                getOffset instruction
-                        in
-                            Html.tr
+    Html.table [ id Styles.Instructions ]
+        (memory
+            |> Disassembler.disassemble model.disassembleOffset model.instructionsDisplayed
+            |> List.map
+                (\instruction ->
+                    let
+                        offset =
+                            getOffset instruction
+                    in
+                    Html.tr
+                        [ classList
+                            [ ( Styles.Instruction, True )
+                            , ( Styles.CurrentInstruction, offset == model.registers.pc )
+                            ]
+                        ]
+                        [ Html.td [ class [ Styles.InstructionGutter ] ]
+                            [ Html.div [ class [ Styles.MemoryLocation ] ] [ memoryView model.offsetByteFormat offset ]
+                            , Html.div
                                 [ classList
-                                    [ ( Styles.Instruction, True )
-                                    , ( Styles.CurrentInstruction, offset == model.registers.pc )
+                                    [ ( Styles.BreakpointHitBox, True )
+                                    , ( Styles.BreakpointOn, Breakpoints.isSet model.breakpoints offset )
                                     ]
+                                , onClick (breakpointClickHandler offset)
                                 ]
-                                [ Html.td [ class [ Styles.InstructionGutter ] ]
-                                    [ Html.div [ class [ Styles.MemoryLocation ] ] [ memoryView model.offsetByteFormat offset ]
-                                    , Html.div
-                                        [ classList
-                                            [ ( Styles.BreakpointHitBox, True )
-                                            , ( Styles.BreakpointOn, Breakpoints.isSet model.breakpoints offset )
-                                            ]
-                                        , onClick (breakpointClickHandler offset)
-                                        ]
-                                        [ Breakpoints.icon
-                                        ]
-                                    ]
-                                , instructionCell model memory instruction
-                                , amMemoryCell model memory instruction
+                                [ Breakpoints.icon
                                 ]
-                    )
-            )
+                            ]
+                        , instructionCell model memory instruction
+                        , amMemoryCell model memory instruction
+                        ]
+                )
+        )
 
 
 getOffset : Instruction -> Int
@@ -92,21 +92,21 @@ amMemoryCell { registers, memoryByteFormat } memory instr =
                 amMemory =
                     AddressingMode.getTargetOffset memory registers addressingMode
             in
-                case amMemory of
-                    Just mem ->
-                        let
-                            ( targetAddr, targetValue ) =
-                                mem
-                        in
-                            Html.td [ class [ Styles.AddressModeValues ] ]
-                                [ Html.text "@ "
-                                , Html.span [ class [ Styles.AddressModeMemoryLocation ] ] [ memoryView memoryByteFormat targetAddr ]
-                                , Html.text " = "
-                                , Html.span [ class [ Styles.AddressModeMemoryValue ] ] [ valueView memoryByteFormat targetValue ]
-                                ]
+            case amMemory of
+                Just mem ->
+                    let
+                        ( targetAddr, targetValue ) =
+                            mem
+                    in
+                    Html.td [ class [ Styles.AddressModeValues ] ]
+                        [ Html.text "@ "
+                        , Html.span [ class [ Styles.AddressModeMemoryLocation ] ] [ memoryView memoryByteFormat targetAddr ]
+                        , Html.text " = "
+                        , Html.span [ class [ Styles.AddressModeMemoryValue ] ] [ valueView memoryByteFormat targetValue ]
+                        ]
 
-                    Nothing ->
-                        Html.td [] []
+                Nothing ->
+                    Html.td [] []
 
         Undefined _ ->
             Html.td [] []
@@ -120,11 +120,11 @@ instructionCell { registers, operandByteFormat } memory instr =
                 amMemory =
                     AddressingMode.getTargetOffset memory registers addressingMode
             in
-                Html.td [ class [ Styles.InstructionValue ] ]
-                    [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
-                    , Html.text " "
-                    , Html.span [ class [ Styles.Operand ] ] (AddressingMode.view operandByteFormat addressingMode)
-                    ]
+            Html.td [ class [ Styles.InstructionValue ] ]
+                [ Html.span [ class [ Styles.Mnemonic ] ] [ Html.text mnemonic ]
+                , Html.text " "
+                , Html.span [ class [ Styles.Operand ] ] (AddressingMode.view operandByteFormat addressingMode)
+                ]
 
         Undefined offset ->
             Html.td [ class [ Styles.InstructionValue ] ] [ Html.span [ class [ Styles.UndefinedOpcode ] ] [ Html.text "---" ] ]
@@ -142,7 +142,7 @@ memoryView display byte =
                     -- Default to hex display
                     "0x" ++ String.padLeft 4 '0' (toHex byte)
     in
-        Html.text str
+    Html.text str
 
 
 valueView : Byte.Format -> Int -> Html msg
@@ -157,7 +157,7 @@ valueView display byte =
                     -- Default to hex
                     "0x" ++ String.padLeft 2 '0' (toHex byte)
     in
-        Html.span [] [ Html.text str ]
+    Html.span [] [ Html.text str ]
 
 
 styles : List Css.Snippet

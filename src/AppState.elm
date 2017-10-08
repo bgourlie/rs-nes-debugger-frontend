@@ -1,8 +1,8 @@
-module AppState exposing (transition, AppState(..), Input(..))
+module AppState exposing (AppState(..), Input(..), transition)
 
+import Continue
 import Step
 import Task
-import Continue
 
 
 -- A state machine defining all the debugger states and transitions

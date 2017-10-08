@@ -1,10 +1,10 @@
 effect module WebSocket
     where { command = MyCmd, subscription = MySub }
     exposing
-        ( send
-        , listen
-        , onOpen
+        ( listen
         , onClose
+        , onOpen
+        , send
         )
 
 {-| Web sockets make it cheaper to talk to your servers.
@@ -12,17 +12,19 @@ effect module WebSocket
 Connecting to a server takes some time, so with web sockets, you make that
 connection once and then keep using. The major benefits of this are:
 
-  1. It faster to send messages. No need to do a bunch of work for every single
-  message.
+1.  It faster to send messages. No need to do a bunch of work for every single
+    message.
 
-  2. The server can push messages to you. With normal HTTP you would have to
-  keep *asking* for changes, but a web socket, the server can talk to you
-  whenever it wants. This means there is less unnecessary network traffic.
+2.  The server can push messages to you. With normal HTTP you would have to
+    keep _asking_ for changes, but a web socket, the server can talk to you
+    whenever it wants. This means there is less unnecessary network traffic.
 
 The API here attempts to cover the typical usage scenarios, but if you need
 many unique connections to the same endpoint, you need a different library.
 
+
 # Web Sockets
+
 @docs listen, onOpen, onClose, send
 
 -}
@@ -47,6 +49,7 @@ type MyCmd msg
 **Note:** It is important that you are also subscribed to this address with
 `listen`. If you are not, the web socket will be created to send one message
 and then closed. Not good!
+
 -}
 send : String -> String -> Cmd msg
 send url message =
@@ -76,6 +79,7 @@ like this:
 
 **Note:** If the connection goes down, the effect manager tries to reconnect
 with an exponential backoff strategy.
+
 -}
 listen : String -> (String -> msg) -> Sub msg
 listen url tagger =
@@ -89,6 +93,7 @@ like this:
 
     subscriptions model =
       onOpen WsOpened
+
 -}
 onOpen : (String -> msg) -> Sub msg
 onOpen tagger =
@@ -102,6 +107,7 @@ like this:
 
     subscriptions model =
       onClose WsClosed
+
 -}
 onClose : (String -> msg) -> Sub msg
 onClose tagger =
@@ -182,9 +188,9 @@ onEffects router cmds subs state =
         collectNewSockets =
             Dict.merge leftStep bothStep rightStep newEntries state.sockets (Task.succeed Dict.empty)
     in
-        cmdHelp router cmds state.sockets
-            &> collectNewSockets
-            |> Task.andThen (\newSockets -> Task.succeed (State newSockets newSubs))
+    cmdHelp router cmds state.sockets
+        &> collectNewSockets
+        |> Task.andThen (\newSockets -> Task.succeed (State newSockets newSubs))
 
 
 cmdHelp : Platform.Router msg Msg -> List (MyCmd msg) -> SocketsDict -> Task Never SocketsDict
@@ -261,7 +267,7 @@ onSelfMsg router selfMsg state =
                         |> Dict.toList
                         |> List.map (\( _, tagger ) -> Platform.sendToApp router (tagger str))
             in
-                Task.sequence sends &> Task.succeed state
+            Task.sequence sends &> Task.succeed state
 
         Die name ->
             case Dict.get name state.sockets of
@@ -276,9 +282,9 @@ onSelfMsg router selfMsg state =
                                 |> Dict.toList
                                 |> List.map (\( _, tagger ) -> Platform.sendToApp router (tagger name))
                     in
-                        Task.sequence sends
-                            &> attemptOpen router 0 name
-                            |> Task.andThen (\pid -> Task.succeed (updateSocket name (Opening 0 pid) state))
+                    Task.sequence sends
+                        &> attemptOpen router 0 name
+                        |> Task.andThen (\pid -> Task.succeed (updateSocket name (Opening 0 pid) state))
 
                 Just (Opening n _) ->
                     retryConnection router n name state
@@ -291,8 +297,8 @@ onSelfMsg router selfMsg state =
                         |> Dict.toList
                         |> List.map (\( _, tagger ) -> Platform.sendToApp router (tagger name))
             in
-                Task.sequence sends
-                    &> Task.succeed (updateSocket name (Connected socket) state)
+            Task.sequence sends
+                &> Task.succeed (updateSocket name (Connected socket) state)
 
         BadOpen name ->
             case Dict.get name state.sockets of
@@ -340,7 +346,7 @@ attemptOpen router backoff name =
                 |> Task.andThen goodOpen
                 |> Task.onError badOpen
     in
-        Process.spawn (after backoff &> actuallyAttemptOpen)
+    Process.spawn (after backoff &> actuallyAttemptOpen)
 
 
 open : String -> Platform.Router msg Msg -> Task WS.BadOpen WS.WebSocket

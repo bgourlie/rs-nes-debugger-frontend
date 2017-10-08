@@ -1,7 +1,7 @@
-module Styles exposing (helpers, class, id, withClass, Class(..), Id(..))
+module Styles exposing (Class(..), Id(..), class, helpers, id, withClass)
 
-import Html.CssHelpers
 import Css exposing (class, id)
+import Html.CssHelpers
 
 
 helpers : Html.CssHelpers.Namespace String Class Id msg

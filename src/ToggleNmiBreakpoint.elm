@@ -1,4 +1,4 @@
-module ToggleNmiBreakpoint exposing (request, Result(..))
+module ToggleNmiBreakpoint exposing (Result(..), request)
 
 import Http
 import Json.Decode as Json
@@ -29,13 +29,12 @@ request : (Result -> msg) -> Cmd msg
 request handler =
     let
         result =
-            (\r ->
+            \r ->
                 case r of
                     Ok r ->
                         handler <| Success r
 
                     Err e ->
                         handler <| Error (toString e)
-            )
     in
-        Http.send result (Http.get endpoint responseModelDecoder)
+    Http.send result (Http.get endpoint responseModelDecoder)

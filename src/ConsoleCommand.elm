@@ -1,7 +1,7 @@
-module ConsoleCommand exposing (parse, ConsoleCommand(..), BreakpointType(..))
+module ConsoleCommand exposing (BreakpointType(..), ConsoleCommand(..), parse)
 
-import Parser exposing (..)
 import Byte
+import Parser exposing (..)
 
 
 type ConsoleCommand
@@ -41,11 +41,10 @@ parseBreakpointCommand =
     succeed ToggleBreakpoint
         |. keyword "bp"
         |. spaces
-        |= (oneOf
-                [ int |> andThen (\offset -> succeed (Offset offset))
-                , (keyword "nmi") |> andThen (\_ -> succeed Nmi)
-                ]
-           )
+        |= oneOf
+            [ int |> andThen (\offset -> succeed (Offset offset))
+            , keyword "nmi" |> andThen (\_ -> succeed Nmi)
+            ]
 
 
 parseJumpToMemoryCommand : Parser ConsoleCommand
@@ -53,11 +52,10 @@ parseJumpToMemoryCommand =
     succeed JumpToMemory
         |. keyword "jmpm"
         |. spaces
-        |= (oneOf
-                [ int
-                , (keyword "stack") |> andThen (\_ -> (succeed 0x0100))
-                ]
-           )
+        |= oneOf
+            [ int
+            , keyword "stack" |> andThen (\_ -> succeed 0x0100)
+            ]
 
 
 parseSetDisassembleOffsetCommand : Parser ConsoleCommand
@@ -102,12 +100,11 @@ parseSetOperandByteView =
 
 parseByteFormat : Parser Byte.Format
 parseByteFormat =
-    (oneOf
-        [ (keyword "hex") |> andThen (\_ -> (succeed Byte.Hex))
-        , (keyword "dec") |> andThen (\_ -> (succeed Byte.Dec))
-        , (keyword "ascii") |> andThen (\_ -> (succeed Byte.Ascii))
+    oneOf
+        [ keyword "hex" |> andThen (\_ -> succeed Byte.Hex)
+        , keyword "dec" |> andThen (\_ -> succeed Byte.Dec)
+        , keyword "ascii" |> andThen (\_ -> succeed Byte.Ascii)
         ]
-    )
 
 
 spaces : Parser ()

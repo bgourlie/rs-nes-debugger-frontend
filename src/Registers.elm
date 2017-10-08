@@ -1,13 +1,13 @@
-module Registers exposing (new, decoder, styles, view, Registers)
+module Registers exposing (Registers, decoder, new, styles, view)
 
-import Html exposing (div, ul, li, h4, text, table, tr, td, th, Html)
-import Html.Attributes exposing (title, colspan)
-import Css
 import Bitwise exposing (and)
+import Byte
+import Css
+import Html exposing (Html, div, h4, li, table, td, text, th, tr, ul)
+import Html.Attributes exposing (colspan, title)
 import Json.Decode as Json exposing (Decoder, field)
 import ParseInt exposing (toHex)
 import Styles
-import Byte
 
 
 { id, class, classList } =
@@ -106,36 +106,36 @@ view model =
         cycles =
             model.cycles
     in
-        table [ id Styles.Registers ]
-            [ tr []
-                [ th [ title "Program Counter" ] [ text "PC" ]
-                , th [ title "Stack Pointer" ] [ text "SP" ]
-                , th [ title "Accumulator" ] [ text "ACC" ]
-                , th [ title "Index (X)" ] [ text "X" ]
-                , th [ title "Index (Y)" ] [ text "Y" ]
-                , th [ title "Status Flags" ] [ text "NV-BDIZC" ]
-                , th [] [ text "Cycles" ]
-                ]
-            , tr []
-                [ td [] [ view16 display registers.pc ]
-                , td [] [ view8 display registers.sp ]
-                , td [] [ view8 display registers.acc ]
-                , td [] [ view8 display registers.x ]
-                , td [] [ view8 display registers.y ]
-                , td []
-                    [ text <|
-                        flagDisplay (getNegative registers)
-                            ++ flagDisplay (getOverflow registers)
-                            ++ flagDisplay (getUnused registers)
-                            ++ flagDisplay (getBreak registers)
-                            ++ flagDisplay (getDecimal registers)
-                            ++ flagDisplay (getInterrupt registers)
-                            ++ flagDisplay (getZero registers)
-                            ++ flagDisplay (getCarry registers)
-                    ]
-                , td [] [ text <| toString cycles ]
-                ]
+    table [ id Styles.Registers ]
+        [ tr []
+            [ th [ title "Program Counter" ] [ text "PC" ]
+            , th [ title "Stack Pointer" ] [ text "SP" ]
+            , th [ title "Accumulator" ] [ text "ACC" ]
+            , th [ title "Index (X)" ] [ text "X" ]
+            , th [ title "Index (Y)" ] [ text "Y" ]
+            , th [ title "Status Flags" ] [ text "NV-BDIZC" ]
+            , th [] [ text "Cycles" ]
             ]
+        , tr []
+            [ td [] [ view16 display registers.pc ]
+            , td [] [ view8 display registers.sp ]
+            , td [] [ view8 display registers.acc ]
+            , td [] [ view8 display registers.x ]
+            , td [] [ view8 display registers.y ]
+            , td []
+                [ text <|
+                    flagDisplay (getNegative registers)
+                        ++ flagDisplay (getOverflow registers)
+                        ++ flagDisplay (getUnused registers)
+                        ++ flagDisplay (getBreak registers)
+                        ++ flagDisplay (getDecimal registers)
+                        ++ flagDisplay (getInterrupt registers)
+                        ++ flagDisplay (getZero registers)
+                        ++ flagDisplay (getCarry registers)
+                ]
+            , td [] [ text <| toString cycles ]
+            ]
+        ]
 
 
 flagDisplay : Bool -> String
@@ -158,7 +158,7 @@ view8 display byte =
                     -- Default to hex
                     "0x" ++ String.padLeft 2 '0' (toHex byte)
     in
-        Html.span [] [ text str ]
+    Html.span [] [ text str ]
 
 
 view16 : Byte.Format -> Int -> Html msg
@@ -173,7 +173,7 @@ view16 display byte =
                     -- Default to hex
                     "0x" ++ String.padLeft 4 '0' (toHex byte)
     in
-        Html.span [] [ text str ]
+    Html.span [] [ text str ]
 
 
 styles : List Css.Snippet

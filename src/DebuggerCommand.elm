@@ -1,16 +1,15 @@
 module DebuggerCommand
     exposing
-        ( crashReasonToString
-        , decode
-        , ReceiveResult(..)
-        , DebuggerCommand
-        , DebuggerCommand(..)
-        , BreakReason(..)
+        ( BreakReason(..)
         , CrashReason(..)
+        , DebuggerCommand(..)
+        , ReceiveResult(..)
+        , crashReasonToString
+        , decode
         )
 
-import Json.Decode as Json exposing (Decoder, field)
 import DebuggerState
+import Json.Decode as Json exposing (Decoder, field)
 import Memory
 import ParseInt exposing (toHex)
 
@@ -41,7 +40,7 @@ type CrashReason
 
 decoder : Memory.Memory -> Decoder DebuggerCommand
 decoder oldMemory =
-    (field "command" Json.string) |> Json.andThen (decodeByCommand oldMemory)
+    field "command" Json.string |> Json.andThen (decodeByCommand oldMemory)
 
 
 decodeByCommand : Memory.Memory -> String -> Decoder DebuggerCommand
@@ -65,12 +64,12 @@ decodeByCommand oldMemory cmd =
 
 crashReasonDecoder : Decoder CrashReason
 crashReasonDecoder =
-    (field "type" Json.string)
+    field "type" Json.string
         |> Json.andThen
             (\type_ ->
                 case type_ of
                     "invalidOperation" ->
-                        (field "description" Json.string)
+                        field "description" Json.string
                             |> Json.andThen (\description -> Json.succeed (InvalidOperation description))
 
                     "invalidVramAccess" ->
@@ -80,11 +79,11 @@ crashReasonDecoder =
                             |> Json.andThen (\( address, desc ) -> Json.succeed (InvalidVramAccess desc address))
 
                     "unexpectedOpcode" ->
-                        (field "opcode" Json.int)
+                        field "opcode" Json.int
                             |> Json.andThen (\opcode -> Json.succeed (UnexpectedOpcode opcode))
 
                     "unimplementedOperation" ->
-                        (field "description" Json.string)
+                        field "description" Json.string
                             |> Json.andThen (\description -> Json.succeed (UnimplementedOperation description))
 
                     _ ->

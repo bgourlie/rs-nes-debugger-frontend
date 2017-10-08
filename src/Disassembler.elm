@@ -1,7 +1,7 @@
-module Disassembler exposing (disassemble, Instruction(..))
+module Disassembler exposing (Instruction(..), disassemble)
 
-import ByteArray exposing (ByteArray)
 import AddressingMode exposing (AddressingMode(..))
+import ByteArray exposing (ByteArray)
 
 
 type Instruction
@@ -486,19 +486,19 @@ disassemble_ offset remainingInstructions memory inputList =
                                 _ ->
                                     Just ( 1, Undefined offset )
                     in
-                        case decoded of
-                            Nothing ->
-                                inputList
+                    case decoded of
+                        Nothing ->
+                            inputList
 
-                            Just ( bytesRead, instruction ) ->
-                                let
-                                    nextOffset =
-                                        offset + bytesRead
+                        Just ( bytesRead, instruction ) ->
+                            let
+                                nextOffset =
+                                    offset + bytesRead
 
-                                    outputList =
-                                        instruction :: inputList
-                                in
-                                    disassemble_ nextOffset (remainingInstructions - 1) memory outputList
+                                outputList =
+                                    instruction :: inputList
+                            in
+                            disassemble_ nextOffset (remainingInstructions - 1) memory outputList
 
 
 implied : String -> Int -> Maybe ( Int, Instruction )

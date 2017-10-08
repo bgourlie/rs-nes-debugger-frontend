@@ -1,7 +1,6 @@
-module Step exposing (request, Result(..))
+module Step exposing (Result(..), request)
 
 import Http
-import Json.Decode
 import Json.Decode exposing (Decoder, field)
 
 
@@ -30,13 +29,12 @@ request : (Result -> msg) -> ( a, Cmd msg ) -> ( a, Cmd msg )
 request handler ( inputModel, inputCmd ) =
     let
         result =
-            (\r ->
+            \r ->
                 case r of
                     Ok r ->
                         handler <| Success r
 
                     Err e ->
                         handler <| Error (toString e)
-            )
     in
-        ( inputModel, Cmd.batch [ inputCmd, Http.send result (Http.get endpoint decoder) ] )
+    ( inputModel, Cmd.batch [ inputCmd, Http.send result (Http.get endpoint decoder) ] )

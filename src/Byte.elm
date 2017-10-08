@@ -1,4 +1,4 @@
-module Byte exposing (asciiValue, Format(..))
+module Byte exposing (Format(..), asciiValue)
 
 import Char
 import Styles

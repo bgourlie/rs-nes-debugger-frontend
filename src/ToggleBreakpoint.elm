@@ -1,7 +1,7 @@
-module ToggleBreakpoint exposing (request, Result(..))
+module ToggleBreakpoint exposing (Result(..), request)
 
-import Json.Decode exposing (Decoder, field)
 import Http
+import Json.Decode exposing (Decoder, field)
 
 
 endpoint : Int -> String
@@ -31,13 +31,12 @@ request : Int -> (Result -> msg) -> ( a, Cmd msg ) -> ( a, Cmd msg )
 request address handler ( inputModel, inputCmd ) =
     let
         result =
-            (\r ->
+            \r ->
                 case r of
                     Ok r ->
                         handler <| Success r
 
                     Err e ->
                         handler <| Error (toString e)
-            )
     in
-        ( inputModel, Cmd.batch [ inputCmd, Http.send result (Http.get (endpoint address) responseModelDecoder) ] )
+    ( inputModel, Cmd.batch [ inputCmd, Http.send result (Http.get (endpoint address) responseModelDecoder) ] )

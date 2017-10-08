@@ -1,8 +1,8 @@
-module Memory exposing (messageDecoder, Memory, MemoryMessage(..))
+module Memory exposing (Memory, MemoryMessage(..), messageDecoder)
 
 import Bitwise
-import Json.Decode as Json exposing (Decoder, field)
 import ByteArray
+import Json.Decode as Json exposing (Decoder, field)
 
 
 type alias Memory =
@@ -16,12 +16,12 @@ type MemoryMessage
 
 messageDecoder : Decoder MemoryMessage
 messageDecoder =
-    (field "state" Json.string)
+    field "state" Json.string
         |> Json.andThen
             (\state ->
                 case state of
                     "NoChange" ->
-                        (field "hash" Json.int)
+                        field "hash" Json.int
                             |> Json.andThen (\hash -> Json.succeed <| NoChange hash)
 
                     "Updated" ->

@@ -1,12 +1,11 @@
-module Console exposing (styles, view, addMessage)
+module Console exposing (addMessage, styles, view)
 
-import Task exposing (Task)
+import Colors
 import Css
 import Dom.Scroll
 import Html exposing (Html)
-import Css
 import Styles
-import Colors
+import Task exposing (Task)
 
 
 { id, class, classList } =
@@ -41,40 +40,39 @@ addMessage handler message appInput =
                                 ( msg, repeats ) =
                                     msgItem
                             in
-                                if msg == message then
-                                    ( msg, repeats + 1 )
-                                else
-                                    ( message, 0 )
+                            if msg == message then
+                                ( msg, repeats + 1 )
+                            else
+                                ( message, 0 )
 
                         Nothing ->
                             ( message, 0 )
             in
-                case List.tail inputModel.messages of
-                    Just tail ->
+            case List.tail inputModel.messages of
+                Just tail ->
+                    let
+                        ( _, newRepeats ) =
+                            newItem
+                    in
+                    if newRepeats > 0 then
+                        ( newItem :: tail, Cmd.none )
+                    else
                         let
-                            ( _, newRepeats ) =
-                                newItem
+                            result =
+                                \r ->
+                                    case r of
+                                        Ok _ ->
+                                            handler
+
+                                        Err _ ->
+                                            handler
                         in
-                            if newRepeats > 0 then
-                                ( newItem :: tail, Cmd.none )
-                            else
-                                let
-                                    result =
-                                        (\r ->
-                                            case r of
-                                                Ok _ ->
-                                                    handler
+                        ( newItem :: inputModel.messages, Task.attempt result (Dom.Scroll.toBottom <| toString Styles.ConsoleLines) )
 
-                                                Err _ ->
-                                                    handler
-                                        )
-                                in
-                                    ( newItem :: inputModel.messages, Task.attempt result (Dom.Scroll.toBottom <| toString Styles.ConsoleLines) )
-
-                    Nothing ->
-                        ( newItem :: inputModel.messages, Cmd.none )
+                Nothing ->
+                    ( newItem :: inputModel.messages, Cmd.none )
     in
-        ( { inputModel | messages = messages }, Cmd.batch [ inputCmd, cmd ] )
+    ( { inputModel | messages = messages }, Cmd.batch [ inputCmd, cmd ] )
 
 
 styles : List Css.Snippet

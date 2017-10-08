@@ -1,9 +1,9 @@
-module DebuggerState exposing (decoder, State, Screen)
+module DebuggerState exposing (Screen, State, decoder)
 
 import Debug
 import Json.Decode as Json exposing (Decoder, field)
-import Registers exposing (Registers)
 import Memory
+import Registers exposing (Registers)
 
 
 type alias State =
@@ -35,7 +35,7 @@ decoder oldMemory =
         (field "cycles" Json.int)
         (field "registers" Registers.decoder)
         (field "screen" screenDecoder)
-        ((field "memory" Memory.messageDecoder)
+        (field "memory" Memory.messageDecoder
             |> Json.andThen
                 (\memorySnapshot ->
                     case memorySnapshot of
@@ -44,11 +44,11 @@ decoder oldMemory =
                                 ( oldHash, oldMem ) =
                                     oldMemory
                             in
-                                if hash == oldHash then
-                                    Json.succeed oldMemory
-                                else
-                                    -- TODO
-                                    Json.succeed <| Debug.log "TODO: Stale memory, request latest" oldMemory
+                            if hash == oldHash then
+                                Json.succeed oldMemory
+                            else
+                                -- TODO
+                                Json.succeed <| Debug.log "TODO: Stale memory, request latest" oldMemory
 
                         Memory.Updated newMemory ->
                             Json.succeed newMemory

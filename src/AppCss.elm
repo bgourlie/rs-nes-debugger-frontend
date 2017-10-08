@@ -1,17 +1,17 @@
 module AppCss exposing (css)
 
-import Css exposing (..)
-import Css.Elements exposing (html, body, ul, li, div)
-import Css.Namespace exposing (namespace)
-import Styles
-import Main
-import Instruction
-import Console
-import Byte
-import HexEditor
-import Colors
-import Registers
 import Breakpoints
+import Byte
+import Colors
+import Console
+import Css exposing (..)
+import Css.Elements exposing (body, div, html, li, ul)
+import Css.Namespace exposing (namespace)
+import HexEditor
+import Instruction
+import Main
+import Registers
+import Styles
 
 
 css : Stylesheet

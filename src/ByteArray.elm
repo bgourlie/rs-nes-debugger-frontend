@@ -1,7 +1,7 @@
 module ByteArray exposing (..)
 
-import Native.ByteArray
 import Bitwise
+import Native.ByteArray
 
 
 type ByteArray
